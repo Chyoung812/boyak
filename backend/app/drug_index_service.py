@@ -1,0 +1,210 @@
+import difflib
+import re
+import sqlite3
+from pathlib import Path
+from typing import Any, Dict, List, Sequence
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+DB_PATH = BACKEND_ROOT / "data" / "processed" / "dur_index.sqlite3"
+
+
+def norm(text: str) -> str:
+    return re.sub(r"[^0-9a-z가-힣]+", "", str(text or "").lower())
+
+
+def typo_variants(text: str) -> List[str]:
+    """OCR/STT에서 자주 섞이는 한글 모음 후보를 일반화해 만든다."""
+    pairs = [
+        ("래", "레"), ("레", "래"), ("내", "네"), ("네", "내"), ("애", "에"), ("에", "애"),
+        ("갤", "겔"), ("겔", "갤"), ("팬", "펜"), ("펜", "팬"), ("택", "텍"), ("텍", "택"),
+        ("샌", "센"), ("센", "샌"), ("밴", "벤"), ("벤", "밴"), ("전", "정"), ("정", "전"),
+    ]
+    variants = {text}
+    for a, b in pairs:
+        if a in text:
+            variants.add(text.replace(a, b))
+    return list(variants)
+
+
+def common_prefix_len(a: str, b: str) -> int:
+    count = 0
+    for left, right in zip(a, b):
+        if left != right:
+            break
+        count += 1
+    return count
+
+
+def has_db() -> bool:
+    return DB_PATH.exists()
+
+
+def connect() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def normalize_medicine_names(names: Sequence[str], limit_per_name: int = 8) -> Dict[str, Any]:
+    if not has_db():
+        return {"ok": False, "reason": "DUR SQLite index not found. Run scripts/build_dur_sqlite.py", "items": []}
+    conn = connect()
+    items: List[Dict[str, Any]] = []
+    for raw in names:
+        q = norm(raw)
+        if not q:
+            continue
+        # exact/starts-with/contains 순으로 후보를 잡고, 없으면 일반화된 유사도 후보를 제시한다.
+        rows = conn.execute(
+            """
+            SELECT alias, alias_norm, product_code, ingredient_code, weight, source,
+              CASE
+                WHEN alias_norm = ? THEN 300
+                WHEN alias_norm LIKE ? THEN 200
+                WHEN alias_norm LIKE ? THEN 100
+                ELSE 0
+              END + weight AS score
+            FROM drug_aliases
+            WHERE alias_norm = ? OR alias_norm LIKE ? OR alias_norm LIKE ?
+            GROUP BY product_code, ingredient_code
+            ORDER BY score DESC, length(alias_norm) ASC
+            LIMIT ?
+            """,
+            (q, q + "%", "%" + q + "%", q, q + "%", "%" + q + "%", limit_per_name),
+        ).fetchall()
+        candidates = [dict(row) for row in rows]
+        status = "not_found"
+        if candidates:
+            status = "matched" if any(candidate.get("alias_norm") == q for candidate in candidates) else "needs_confirmation"
+            for candidate in candidates:
+                candidate.pop("alias_norm", None)
+
+        if not candidates:
+            for variant in typo_variants(q):
+                if variant == q:
+                    continue
+                variant_rows = conn.execute(
+                    """
+                    SELECT alias, alias_norm, product_code, ingredient_code, weight, source,
+                      CASE
+                        WHEN alias_norm = ? THEN 280
+                        WHEN alias_norm LIKE ? THEN 180
+                        WHEN alias_norm LIKE ? THEN 90
+                        ELSE 0
+                      END + weight AS score
+                    FROM drug_aliases
+                    WHERE alias_norm = ? OR alias_norm LIKE ? OR alias_norm LIKE ?
+                    GROUP BY product_code, ingredient_code
+                    ORDER BY score DESC, length(alias_norm) ASC
+                    LIMIT ?
+                    """,
+                    (variant, variant + "%", "%" + variant + "%", variant, variant + "%", "%" + variant + "%", limit_per_name),
+                ).fetchall()
+                candidates = [dict(row) for row in variant_rows]
+                if candidates:
+                    for candidate in candidates:
+                        candidate["match_basis"] = "typo_variant"
+                        candidate.pop("alias_norm", None)
+                    status = "needs_confirmation"
+                    break
+
+        if not candidates and len(q) >= 3:
+            fuzzy_candidates = []
+            for fuzzy_query in typo_variants(q):
+                prefix = fuzzy_query[:2]
+                fuzzy_rows = conn.execute(
+                    """
+                    SELECT alias, alias_norm, product_code, ingredient_code, weight, source
+                    FROM drug_aliases
+                    WHERE alias_norm LIKE ?
+                    GROUP BY product_code, ingredient_code
+                    ORDER BY length(alias_norm) ASC
+                    LIMIT 2000
+                    """,
+                    (prefix + "%",),
+                ).fetchall()
+                for row in fuzzy_rows:
+                    d = dict(row)
+                    alias_norm = d.get("alias_norm") or ""
+                    compare_text = alias_norm[: max(len(fuzzy_query) + 2, 4)]
+                    ratio = difflib.SequenceMatcher(None, fuzzy_query, compare_text).ratio()
+                    lcp = common_prefix_len(fuzzy_query, alias_norm)
+                    is_similar = ratio >= 0.62 or (lcp >= 3 and ratio >= 0.40)
+                    if is_similar:
+                        d["score"] = int(ratio * 100)
+                        d["match_basis"] = "fuzzy_alias"
+                        d.pop("alias_norm", None)
+                        fuzzy_candidates.append(d)
+            dedup: Dict[tuple, Dict[str, Any]] = {}
+            for candidate in fuzzy_candidates:
+                key = (candidate.get("product_code"), candidate.get("ingredient_code"))
+                if key not in dedup or candidate.get("score", 0) > dedup[key].get("score", 0):
+                    dedup[key] = candidate
+            fuzzy_candidates = list(dedup.values())
+            fuzzy_candidates.sort(key=lambda x: (-x["score"], len(x.get("alias") or "")))
+            candidates = fuzzy_candidates[:limit_per_name]
+            if candidates:
+                status = "needs_confirmation"
+
+        items.append({
+            "input": raw,
+            "normalized_input": q,
+            "status": status,
+            "candidates": candidates,
+            "top_candidate": candidates[0] if candidates else None,
+        })
+    conn.close()
+    return {"ok": True, "db_path": str(DB_PATH), "items": items}
+
+
+def safety_check_by_codes(product_codes: Sequence[str], ingredient_codes: Sequence[str]) -> List[Dict[str, Any]]:
+    if not has_db():
+        return []
+    pcs = [x for x in product_codes if x]
+    ics = [x for x in ingredient_codes if x]
+    conn = connect()
+    matches: List[Dict[str, Any]] = []
+
+    if pcs or ics:
+        clauses = []
+        params: List[str] = []
+        if pcs:
+            clauses.append("product_code IN (%s)" % ",".join("?" for _ in pcs))
+            params.extend(pcs)
+        if ics:
+            clauses.append("ingredient_code IN (%s)" % ",".join("?" for _ in ics))
+            params.extend(ics)
+        rows = conn.execute(
+            f"""
+            SELECT category, product_code, ingredient_code, product_name, ingredient_name, reason, source_date, source
+            FROM safety_rules
+            WHERE ({' OR '.join(clauses)}) AND category != '임부금기'
+            LIMIT 30
+            """,
+            params,
+        ).fetchall()
+        for row in rows:
+            matches.append(dict(row))
+
+    # 성분코드 기반 병용금기: 입력된 성분코드끼리 pair table에서 검사
+    unique_ics = sorted(set(ics))
+    if len(unique_ics) >= 2:
+        for i, a in enumerate(unique_ics):
+            for b in unique_ics[i + 1 :]:
+                rows = conn.execute(
+                    """
+                    SELECT ingredient_code_a, ingredient_code_b, ingredient_name_a, ingredient_name_b,
+                           product_name_a, product_name_b, reason, source_date, source
+                    FROM contraindication_pairs
+                    WHERE (ingredient_code_a = ? AND ingredient_code_b = ?)
+                       OR (ingredient_code_a = ? AND ingredient_code_b = ?)
+                    LIMIT 10
+                    """,
+                    (a, b, b, a),
+                ).fetchall()
+                for row in rows:
+                    d = dict(row)
+                    d["category"] = "병용금기"
+                    matches.append(d)
+    conn.close()
+    return matches

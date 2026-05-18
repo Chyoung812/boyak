@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+frontend/node_modules/
+
+# Next.js build/dev output
+.next/
+frontend/.next/
+frontend/out/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# environment / secrets
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+frontend/.env.local
+
+# data cache / downloaded raw/generated files
+backend/data/raw/
+backend/data/cache/
+backend/data/processed/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/

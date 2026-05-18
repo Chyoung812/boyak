@@ -3,7 +3,13 @@
 import { memo } from "react";
 import { Mic, Volume2 } from "lucide-react";
 
-import { costBodyOptions, costFlowSteps, treatmentCosts, treatmentOptions } from "../constants";
+import {
+  costBodyOptions,
+  costFlowSteps,
+  treatmentCostDetails,
+  treatmentCosts,
+  treatmentOptions,
+} from "../constants";
 import BackButton from "./BackButton";
 import StepLabel from "./StepLabel";
 
@@ -22,6 +28,7 @@ function CostEstimateScreen({
   const currentIndex = costStepKeys.indexOf(step);
   const currentStepLabel = costFlowSteps[currentIndex] ?? costFlowSteps[0];
   const selectedCost = treatmentCosts[selectedTreatment];
+  const selectedDetail = treatmentCostDetails[selectedTreatment] ?? treatmentCostDetails["기타 문의"];
 
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="cost-title">
@@ -121,19 +128,20 @@ function CostEstimateScreen({
             className="mx-auto w-full max-w-[760px] rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:max-h-full lg:max-w-[840px] lg:p-5"
             aria-labelledby="cost-step-2"
           >
-            <StepLabel number="2" title="치료/검사 선택" />
+            <StepLabel number="2" title="진료 흐름 선택" />
             <h2 id="cost-step-2" className="mb-6 text-center text-3xl font-black leading-relaxed lg:mb-4 lg:text-3xl">
-              {selectedBody} 통증, 어떤 치료를 알고 싶으세요?
+              {selectedBody} 통증, 어떤 경우가 궁금하세요?
             </h2>
             <div className="grid gap-3 md:grid-cols-2">
               {treatmentOptions.map((treatment) => {
                 const isSelected = selectedTreatment === treatment;
-                const isEtc = treatment === "기타 문의";
+                const isWide = treatment === "기타 문의" || treatment.includes("물리치료");
+                const detail = treatmentCostDetails[treatment];
                 return (
                   <button
                     key={treatment}
-                    className={`min-h-20 rounded-2xl border-2 px-5 text-left text-2xl font-black active:scale-[0.98] md:mx-0 lg:min-h-[58px] lg:text-lg ${
-                      isEtc ? "md:col-span-2 md:w-full md:text-center" : ""
+                    className={`min-h-24 rounded-2xl border-2 px-5 py-4 text-left active:scale-[0.98] md:mx-0 lg:min-h-[74px] lg:py-3 ${
+                      isWide ? "md:col-span-2 md:w-full" : ""
                     } ${
                       isSelected
                         ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
@@ -146,7 +154,10 @@ function CostEstimateScreen({
                       onStepChange("estimate");
                     }}
                   >
-                    {treatment}
+                    <span className="block text-2xl font-black leading-tight lg:text-xl">{treatment}</span>
+                    <span className="mt-2 block text-base font-extrabold leading-snug text-boyak-muted lg:text-sm">
+                      {detail?.subtitle}
+                    </span>
                   </button>
                 );
               })}
@@ -168,21 +179,37 @@ function CostEstimateScreen({
           >
             <StepLabel number="3" title="예상 비용 안내" />
             <h2 id="cost-step-3" className="mb-4 text-center text-2xl font-black lg:text-3xl">
-              예상 비용 (건강보험 적용 후)
+              병원 창구 예상 비용
             </h2>
             <div className="mb-4 rounded-2xl bg-[#EFFAF4] p-6 text-center text-4xl font-black leading-snug text-[#16804D] lg:p-5 lg:text-4xl">
               {selectedCost}
             </div>
-            <dl className="grid gap-3 text-xl font-extrabold lg:gap-2 lg:text-base">
-              {["진료비(초진)", "X-ray 검사", "물리치료(1회)"].map((item) => (
+            <div className="mb-4 rounded-2xl border-2 border-[#BFE8D0] bg-white p-5 lg:p-4">
+              <p className="text-xl font-black text-boyak-ink lg:text-lg">{selectedTreatment}</p>
+              <p className="mt-2 text-lg font-extrabold leading-relaxed text-[#16804D] lg:text-base">
+                {selectedDetail.range}
+              </p>
+              <p className="mt-2 text-base font-bold leading-relaxed text-boyak-muted lg:text-sm">
+                {selectedDetail.note}
+              </p>
+              <p className="mt-3 rounded-xl bg-boyak-field px-4 py-2 text-sm font-extrabold text-boyak-muted">
+                근거: {selectedDetail.codes}
+              </p>
+            </div>
+            <dl className="grid gap-3 text-lg font-extrabold lg:gap-2 lg:text-base">
+              {[
+                "진찰만",
+                "진찰 + X-ray + 약 처방 가능",
+                "진찰 + X-ray + 물리치료 + 약 처방 가능",
+              ].map((item) => (
                 <div key={item} className="flex justify-between gap-4 rounded-xl bg-boyak-field px-4 py-3 lg:py-2.5">
                   <dt>{item}</dt>
-                  <dd>{treatmentCosts[item]}</dd>
+                  <dd className="text-right text-boyak-orange">{treatmentCosts[item]}</dd>
                 </div>
               ))}
             </dl>
             <p className="mt-4 rounded-xl bg-[#F1F4FA] p-4 text-lg font-bold text-boyak-muted lg:p-3 lg:text-base">
-              병원마다 차이가 있을 수 있어요.
+              약국 약값, 주사, 추가 촬영, 야간/공휴일 가산은 별도예요.
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <button
@@ -216,10 +243,10 @@ function CostEstimateScreen({
             <div className="mb-3 rounded-2xl bg-[#EEF4FF] p-6 text-2xl font-extrabold leading-relaxed text-[#27406A] lg:p-4 lg:text-xl">
               궁금한 점이 있나요?
               <br />
-              예) MRI 비용은?
+              예) MRI도 건강보험 돼요?
             </div>
             <div className="mb-4 rounded-2xl bg-[#F4F0FF] p-6 text-2xl font-extrabold leading-relaxed text-[#27406A] lg:p-4 lg:text-xl">
-              {selectedTreatment} 비용은 보험 적용 후 {selectedCost} 정도 예상돼요.
+              {selectedTreatment}은 {selectedCost} 정도로 안내해요. {selectedDetail.note}
             </div>
             <div className="grid gap-3 md:grid-cols-2">
               <button

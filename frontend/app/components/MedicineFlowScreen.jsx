@@ -16,7 +16,7 @@ import {
   Volume2,
 } from "lucide-react";
 
-import { extractedMedicines, homeMedicines, medicineSteps, medicineStepKeys } from "../constants";
+import { homeMedicines, medicineSteps, medicineStepKeys } from "../constants";
 import BackButton from "./BackButton";
 import StepHeader from "./StepHeader";
 import FlowPanel from "./FlowPanel";
@@ -25,17 +25,41 @@ import NextAction from "./NextAction";
 function MedicineFlowScreen({
   step,
   previewUrl,
+  photoPreviews,
+  ocrResult,
+  ocrError,
+  normalizeResult,
+  normalizeError,
+  selectedCandidates,
+  safetyResult,
+  safetyError,
+  isSafetyLoading,
+  isOcrLoading,
   hasHerbalMedicine,
+  userAge,
   cameraInputRef,
   galleryInputRef,
   onImageChange,
+  onAnalyzePhotos,
+  onResetPhotos,
+  onSelectCandidate,
+  onRunSafetyCheck,
   onBack,
   onStepChange,
   onHerbalChange,
+  onAgeChange,
   onSpeak,
 }) {
   const currentIndex = medicineStepKeys.indexOf(step);
   const currentStepLabel = medicineSteps[currentIndex] ?? medicineSteps[0];
+  const ocrMedicines = (ocrResult?.medicine_bags || []).flatMap((bag, bagIndex) =>
+    (bag.medicine_names || []).map((name, medicineIndex) => ({
+      name,
+      detail: bag.source_label || `사진 ${bagIndex + 1}`,
+      key: `${bag.bag_id || bagIndex}-${medicineIndex}-${name}`,
+    })),
+  );
+  const normalizeItems = normalizeResult?.items || [];
 
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="medicine-title">
@@ -93,9 +117,12 @@ function MedicineFlowScreen({
       {step === "capture" && (
         <CaptureStep
           previewUrl={previewUrl}
+          photoPreviews={photoPreviews}
           cameraInputRef={cameraInputRef}
           galleryInputRef={galleryInputRef}
           onImageChange={onImageChange}
+          onAnalyzePhotos={onAnalyzePhotos}
+          onResetPhotos={onResetPhotos}
           onStepChange={onStepChange}
           onSpeak={onSpeak}
         />
@@ -105,8 +132,8 @@ function MedicineFlowScreen({
         <FlowPanel
           icon={<Loader2 className="size-14 animate-spin text-boyak-blue" aria-hidden="true" />}
           title="OCR로 약 정보를 읽는 중이에요"
-          body="약 이름, 성분, 조제일자를 자동으로 추출할 예정입니다. 지금은 다음 단계에서 목업 결과를 확인할 수 있어요."
-          primaryLabel="추출 내용 확인"
+          body={`${photoPreviews?.length || 1}장 사진을 하나의 복용 묶음으로 보고 약 이름, 성분, 조제일자를 추출하고 있어요. 완료되면 자동으로 확인 화면으로 이동합니다.`}
+          primaryLabel={isOcrLoading ? "분석 중" : "추출 내용 확인"}
           onPrimary={() => onStepChange("review")}
           onSpeak={() =>
             onSpeak("약 이름과 조제일자를 읽고 있어요. 다음 화면에서 인식 결과를 확인하고 수정할 수 있어요.")
@@ -121,19 +148,79 @@ function MedicineFlowScreen({
             title="추출된 내용을 확인해주세요"
             onSpeak={() => onSpeak("인식된 약 이름과 조제일자를 확인해주세요. 틀린 내용은 수정할 수 있어요.")}
           />
-          <div className="grid gap-4 lg:grid-cols-2 lg:gap-3">
-            {extractedMedicines.map((medicine) => (
-              <label key={medicine.name} className="grid gap-2 rounded-2xl border-2 border-boyak-line bg-boyak-field p-5 lg:p-4">
-                <span className="text-lg font-black text-boyak-muted lg:text-base">약 이름</span>
-                <input
-                  className="min-h-14 rounded-xl border border-boyak-line bg-white px-4 text-2xl font-black lg:min-h-12 lg:text-xl"
-                  defaultValue={medicine.name}
-                />
-                <span className="text-lg font-bold text-boyak-muted lg:text-base">{medicine.detail}</span>
-              </label>
-            ))}
+          {ocrError && (
+            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
+              OCR 분석 실패: {ocrError}
+            </div>
+          )}
+          {!ocrError && !ocrMedicines.length && (
+            <div className="mb-5 rounded-2xl border-2 border-[#F5D08A] bg-[#FFF8E8] p-5 text-xl font-black text-[#8A5A00] lg:text-base">
+              아직 추출된 약 이름이 없어요. 사진을 다시 찍거나 OCR 키 설정을 확인해주세요.
+            </div>
+          )}
+          {normalizeError && (
+            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
+              약 후보 확인 실패: {normalizeError}
+            </div>
+          )}
+          <div className="grid gap-4">
+            {normalizeItems.map((item, index) => {
+              const candidates = item.candidates || [];
+              return (
+                <div key={`${item.input}-${index}`} className="rounded-2xl border-2 border-boyak-line bg-boyak-field p-5 lg:p-4">
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-lg font-black text-boyak-muted lg:text-base">인식된 약 이름</p>
+                      <p className="text-2xl font-black text-boyak-ink lg:text-xl">{item.input}</p>
+                    </div>
+                    <span className={`rounded-full px-3 py-1 text-sm font-black ${item.status === "matched" ? "bg-[#EDF9F1] text-boyak-green" : "bg-[#FFF8E8] text-[#8A5A00]"}`}>
+                      {item.status === "matched" ? "일치" : item.status === "needs_confirmation" ? "확인 필요" : "못 찾음"}
+                    </span>
+                  </div>
+                  {candidates.length ? (() => {
+                    const ingredientCodes = Array.from(new Set(candidates.map((candidate) => candidate.ingredient_code).filter(Boolean)));
+                    if (ingredientCodes.length <= 1) {
+                      const selected = selectedCandidates?.[index] || candidates[0];
+                      return (
+                        <div className="rounded-xl border-2 border-boyak-blue bg-[#EDF4FF] p-4">
+                          <p className="text-lg font-black text-boyak-ink lg:text-base">
+                            {selected?.alias || candidates[0]?.alias}
+                          </p>
+                          <p className="mt-1 text-base font-bold text-boyak-blue">
+                            같은 성분 약으로 확인돼 자동 선택했어요.
+                          </p>
+                          <p className="mt-1 text-sm text-boyak-muted">성분코드 {ingredientCodes[0] || "확인필요"}</p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {candidates.slice(0, 4).map((candidate) => {
+                          const selected = selectedCandidates?.[index]?.product_code === candidate.product_code && selectedCandidates?.[index]?.ingredient_code === candidate.ingredient_code;
+                          return (
+                            <button
+                              key={`${candidate.product_code}-${candidate.ingredient_code}-${candidate.alias}`}
+                              className={`rounded-xl border-2 p-4 text-left font-bold ${selected ? "border-boyak-blue bg-[#EDF4FF]" : "border-boyak-line bg-white"}`}
+                              type="button"
+                              onClick={() => onSelectCandidate(index, candidate)}
+                            >
+                              <p className="text-lg font-black text-boyak-ink lg:text-base">{candidate.alias}</p>
+                              <p className="mt-1 text-sm text-boyak-muted">성분코드 {candidate.ingredient_code || "확인필요"}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })() : (
+                    <p className="rounded-xl border border-[#F5D08A] bg-white p-4 text-lg font-bold text-[#8A5A00]">
+                      후보를 못 찾았어요. 약봉투 전체가 보이게 다시 찍거나 약 이름을 더 정확히 입력해주세요.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <NextAction label="다른 약 추가하기" onClick={() => onStepChange("add")} />
+          <NextAction label="선택한 후보로 계속" onClick={() => onStepChange("add")} />
         </div>
       )}
 
@@ -163,9 +250,23 @@ function MedicineFlowScreen({
         <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
           <StepHeader
             icon={<Leaf className="size-12 text-boyak-green" />}
-            title="한약을 함께 드시나요?"
-            onSpeak={() => onSpeak("한약을 함께 드시는지 알려주세요. 양약과 함께 먹을 때 주의가 필요할 수 있어요.")}
+            title="나이와 한약 복용 여부를 알려주세요"
+            onSpeak={() => onSpeak("나이를 입력하고, 한약을 함께 드시는지 알려주세요. 나이에 따라 주의 약이 달라질 수 있어요.")}
           />
+          <label className="mb-5 block rounded-2xl border-2 border-boyak-line bg-boyak-field p-5">
+            <span className="text-lg font-black text-boyak-muted lg:text-base">복용하시는 분 나이</span>
+            <input
+              className="mt-2 min-h-16 w-full rounded-xl border border-boyak-line bg-white px-4 text-3xl font-black lg:min-h-12 lg:text-2xl"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              placeholder="예: 76"
+              type="number"
+              min="1"
+              max="120"
+              value={userAge}
+              onChange={(event) => onAgeChange(event.target.value)}
+            />
+          </label>
           <div className="grid gap-4 md:grid-cols-2 lg:gap-3">
             <button
               className={`min-h-32 rounded-2xl border-2 px-6 text-4xl font-black lg:min-h-20 lg:text-3xl ${
@@ -186,7 +287,7 @@ function MedicineFlowScreen({
               아니오
             </button>
           </div>
-          <NextAction label="DUR 분석 시작" onClick={() => onStepChange("dur")} />
+          <NextAction label={`${photoPreviews?.length || 1}장 묶음으로 DUR 분석 시작`} onClick={onRunSafetyCheck} />
         </div>
       )}
 
@@ -194,11 +295,11 @@ function MedicineFlowScreen({
         <FlowPanel
           icon={<ShieldCheck className="size-14 text-boyak-blue" aria-hidden="true" />}
           title="DUR 분석으로 위험 조합을 확인해요"
-          body="병용금기, 연령금기, 중복 성분, 일반의약품 포함 여부를 백엔드 API로 검증할 예정입니다."
-          primaryLabel="결과 확인"
+          body={isSafetyLoading ? "선택한 약 후보의 제품코드/성분코드로 DUR 노인주의, 연령금기, 병용금기를 확인하고 있어요." : "분석이 끝나면 결과 화면으로 자동 이동합니다."}
+          primaryLabel={isSafetyLoading ? "분석 중" : "결과 확인"}
           onPrimary={() => onStepChange("result")}
           onSpeak={() =>
-            onSpeak("DUR 분석으로 함께 먹으면 안 되는 약, 나이에 주의가 필요한 약, 같은 성분 중복 여부를 확인합니다.")
+            onSpeak("DUR 분석으로 함께 먹으면 안 되는 약, 나이에 주의가 필요한 약을 확인합니다.")
           }
         />
       )}
@@ -209,25 +310,44 @@ function MedicineFlowScreen({
             icon={<AlertTriangle className="size-12 text-boyak-red" />}
             title="결과를 확인해주세요"
             onSpeak={() =>
-              onSpeak("주의가 필요합니다. 감기약과 타이레놀은 같은 해열진통 성분이 겹칠 수 있어요. 약사나 의사에게 확인하세요.")
+              onSpeak(safetyResult?.tts_text || safetyResult?.message || "DUR 분석 결과를 확인해주세요. 주의 문구가 있으면 약사나 의사에게 확인하세요.")
             }
           />
+          {safetyError && (
+            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
+              DUR 분석 실패: {safetyError}
+            </div>
+          )}
           <div className="grid gap-5 lg:grid-cols-2 lg:gap-3">
-            <div className="rounded-2xl border-2 border-[#FFC5C5] bg-[#FFF0F0] p-6 lg:p-5">
-              <p className="mb-3 text-xl font-black text-boyak-red lg:mb-2 lg:text-lg">주의</p>
-              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">중복 성분 가능성</h2>
+            <div className={`rounded-2xl border-2 p-6 lg:p-5 ${safetyResult?.level === "위험" ? "border-[#FFC5C5] bg-[#FFF0F0]" : safetyResult?.level === "주의" ? "border-[#F5D08A] bg-[#FFF8E8]" : "border-[#BFE5CB] bg-[#EDF9F1]"}`}>
+              <p className="mb-3 text-xl font-black text-boyak-red lg:mb-2 lg:text-lg">{safetyResult?.level || "확인필요"}</p>
+              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">{safetyResult?.message || "분석 결과를 확인하세요"}</h2>
               <p className="text-xl font-bold leading-relaxed text-boyak-muted lg:text-lg">
-                감기약과 타이레놀은 해열진통 성분이 겹칠 수 있어요.
+                {safetyResult?.action || "공공 DUR 데이터 기반 확인 보조 결과입니다. 약사나 의사에게 최종 확인하세요."}
               </p>
             </div>
             <div className="rounded-2xl border-2 border-[#BFE5CB] bg-[#EDF9F1] p-6 lg:p-5">
-              <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">안내</p>
-              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">복약 전 상담 권장</h2>
+              <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">근거</p>
+              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">DUR 공공데이터</h2>
               <p className="text-xl font-bold leading-relaxed text-boyak-muted lg:text-lg">
-                위험 조합이 의심되면 가까운 병원이나 약국에 확인하세요.
+                노인주의, 연령금기, 병용금기 데이터 기준으로 확인했어요. 진단이나 처방은 아닙니다.
               </p>
             </div>
           </div>
+          {!!safetyResult?.matches?.length && (
+            <div className="mt-5 rounded-2xl border-2 border-boyak-line bg-white p-5">
+              <p className="mb-3 text-xl font-black text-boyak-ink">확인된 항목</p>
+              <div className="grid gap-3">
+                {safetyResult.matches.slice(0, 5).map((match, index) => (
+                  <div key={`${match.category}-${index}`} className="rounded-xl bg-boyak-field p-4">
+                    <p className="text-lg font-black text-boyak-red">{match.category}</p>
+                    <p className="mt-1 text-base font-bold text-boyak-muted">{match.medicine_name || match.ingredient}</p>
+                    <p className="mt-1 text-base text-boyak-muted">{match.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-6 grid gap-4 md:grid-cols-2 lg:mt-4 lg:gap-3">
             <button
               className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl bg-boyak-red px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg"
@@ -240,7 +360,7 @@ function MedicineFlowScreen({
               className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl border-2 border-boyak-line bg-white px-6 text-2xl font-black lg:min-h-14 lg:text-lg"
               type="button"
               onClick={() =>
-                onSpeak("주의가 필요합니다. 감기약과 타이레놀은 같은 해열진통 성분이 겹칠 수 있어요.")
+                onSpeak(safetyResult?.tts_text || safetyResult?.message || "DUR 분석 결과를 확인해주세요.")
               }
             >
               <Volume2 className="size-8 text-boyak-blue lg:size-6" aria-hidden="true" />
@@ -253,11 +373,20 @@ function MedicineFlowScreen({
   );
 }
 
-function CaptureStep({ previewUrl, cameraInputRef, galleryInputRef, onImageChange, onStepChange, onSpeak }) {
+function CaptureStep({
+  previewUrl,
+  photoPreviews = [],
+  cameraInputRef,
+  galleryInputRef,
+  onImageChange,
+  onAnalyzePhotos,
+  onResetPhotos,
+  onSpeak,
+}) {
   return (
     <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <input ref={cameraInputRef} className="hidden" type="file" accept="image/*" capture="environment" onChange={onImageChange} />
-      <input ref={galleryInputRef} className="hidden" type="file" accept="image/*" onChange={onImageChange} />
+      <input ref={galleryInputRef} className="hidden" type="file" accept="image/*" multiple onChange={onImageChange} />
       <button
         className="mb-8 flex min-h-[360px] w-full flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-[#D6DFEE] bg-[#FBFCFE] p-7 text-center shadow-soft sm:p-10 lg:mb-3 lg:min-h-0 lg:flex-1 lg:p-6"
         type="button"
@@ -265,8 +394,16 @@ function CaptureStep({ previewUrl, cameraInputRef, galleryInputRef, onImageChang
         aria-label="약 봉투나 처방전 사진 촬영하기"
       >
         {previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={previewUrl} alt="선택한 약 사진 미리보기" className="max-h-[290px] max-w-full rounded-lg object-contain lg:max-h-full" />
+          <div className="w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="마지막으로 선택한 약 사진 미리보기" className="mx-auto max-h-[230px] max-w-full rounded-lg object-contain lg:max-h-[220px]" />
+            <p className="mt-5 text-3xl font-black text-boyak-blue lg:mt-3 lg:text-2xl">
+              현재 {photoPreviews.length}장 담았어요
+            </p>
+            <p className="mt-2 text-xl font-bold text-boyak-muted lg:text-base">
+              더 찍을 약봉투가 있으면 아래에서 추가 촬영하세요.
+            </p>
+          </div>
         ) : (
           <>
             <p className="mb-12 max-w-[520px] text-3xl font-black leading-relaxed text-boyak-ink lg:mb-5 lg:text-2xl">
@@ -292,7 +429,7 @@ function CaptureStep({ previewUrl, cameraInputRef, galleryInputRef, onImageChang
           onClick={() => cameraInputRef.current?.click()}
         >
           <Camera className="size-7" aria-hidden="true" />
-          사진 촬영
+          {photoPreviews.length ? "더 찍기" : "사진 촬영"}
         </button>
         <button
           className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg border border-boyak-line bg-boyak-field px-8 text-xl font-black lg:min-h-16 lg:text-xl"
@@ -300,20 +437,41 @@ function CaptureStep({ previewUrl, cameraInputRef, galleryInputRef, onImageChang
           onClick={() => galleryInputRef.current?.click()}
         >
           <ImagePlus className="size-7" aria-hidden="true" />
-          갤러리에서 선택
+          갤러리 여러 장 선택
         </button>
         <button
-          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg border border-boyak-line bg-boyak-field px-8 text-xl font-black lg:min-h-16 lg:text-xl"
+          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-green px-8 text-xl font-black text-white disabled:bg-boyak-line disabled:text-boyak-muted lg:min-h-16 lg:text-xl"
           type="button"
-          onClick={() => {
-            onStepChange("ocr");
-            onSpeak("OCR 분석 화면으로 이동합니다. 실제 인식 기능은 백엔드와 연결될 예정입니다.");
-          }}
+          disabled={!photoPreviews.length}
+          onClick={onAnalyzePhotos}
         >
-          <FileText className="size-7 text-boyak-blue" aria-hidden="true" />
-          OCR 분석 시작
+          <FileText className="size-7" aria-hidden="true" />
+          {photoPreviews.length <= 1 ? "바로 분석" : `${photoPreviews.length}장 묶음 분석`}
         </button>
       </div>
+
+      {photoPreviews.length > 0 && (
+        <div className="mt-4 rounded-2xl border-2 border-[#C8DAF7] bg-[#EDF4FF] p-4 lg:mt-3">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xl font-black text-boyak-blue lg:text-lg">촬영한 약봉투 {photoPreviews.length}장</p>
+            <button className="rounded-xl border border-boyak-line bg-white px-4 py-2 text-base font-black" type="button" onClick={onResetPhotos}>
+              다시 찍기
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
+            {photoPreviews.map((photo, index) => (
+              <div key={photo.id} className="rounded-xl border border-boyak-line bg-white p-2 text-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={photo.url} alt={`약봉투 사진 ${index + 1}`} className="h-20 w-full rounded-lg object-cover" />
+                <p className="mt-1 text-sm font-black text-boyak-muted">사진 {index + 1}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-base font-bold text-boyak-muted">
+            한 장만 있으면 바로 분석하고, 여러 장이면 모두 한 묶음으로 보내요.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

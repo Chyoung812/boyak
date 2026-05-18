@@ -10,24 +10,36 @@ import {
   Volume2,
 } from "lucide-react";
 
-import { featureCards, nearbyHospitals, treatmentCosts } from "./constants";
+import { featureCards, nearbyHospitals, treatmentCostDetails, treatmentCosts } from "./constants";
 import MedicineFlowScreen from "./components/MedicineFlowScreen";
 import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
 
 const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
 
 export default function Home() {
   const [view, setView] = useState("home");
   const [medicineStep, setMedicineStep] = useState("capture");
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [medicinePhotoPreviews, setMedicinePhotoPreviews] = useState([]);
+  const [medicineOcrResult, setMedicineOcrResult] = useState(null);
+  const [medicineOcrError, setMedicineOcrError] = useState(null);
+  const [isMedicineOcrLoading, setIsMedicineOcrLoading] = useState(false);
+  const [medicineNormalizeResult, setMedicineNormalizeResult] = useState(null);
+  const [medicineNormalizeError, setMedicineNormalizeError] = useState(null);
+  const [selectedMedicineCandidates, setSelectedMedicineCandidates] = useState({});
+  const [medicineSafetyResult, setMedicineSafetyResult] = useState(null);
+  const [medicineSafetyError, setMedicineSafetyError] = useState(null);
+  const [isMedicineSafetyLoading, setIsMedicineSafetyLoading] = useState(false);
   const [hasHerbalMedicine, setHasHerbalMedicine] = useState(null);
+  const [medicineUserAge, setMedicineUserAge] = useState("");
   const [selectedSymptom, setSelectedSymptom] = useState(null);
   const [hospitalStep, setHospitalStep] = useState("input");
   const [hospitalIndex, setHospitalIndex] = useState(0);
   const [costStep, setCostStep] = useState("body");
   const [selectedCostBody, setSelectedCostBody] = useState("허리");
-  const [selectedTreatment, setSelectedTreatment] = useState("X-ray 검사");
+  const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 약 처방 가능");
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
 
@@ -44,15 +56,47 @@ export default function Home() {
   }, []);
 
   const handleImage = useCallback((event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    setPreviewUrl(URL.createObjectURL(file));
-    setMedicineStep("ocr");
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) return;
+
+    const newPreviews = files.map((file) => ({
+      id: `${file.name}-${file.lastModified}-${crypto.randomUUID?.() ?? Date.now()}`,
+      name: file.name,
+      file,
+      url: URL.createObjectURL(file),
+    }));
+
+    setMedicinePhotoPreviews((current) => {
+      const next = [...current, ...newPreviews];
+      setPreviewUrl(next.at(-1)?.url ?? null);
+      return next;
+    });
+    setMedicineStep("capture");
+    setMedicineOcrResult(null);
+    setMedicineOcrError(null);
+    setMedicineNormalizeResult(null);
+    setMedicineNormalizeError(null);
+    setSelectedMedicineCandidates({});
+    setMedicineSafetyResult(null);
+    setMedicineSafetyError(null);
+    event.target.value = "";
   }, []);
 
   const goHome = useCallback(() => {
     setView("home");
     setMedicineStep("capture");
+    setPreviewUrl(null);
+    setMedicinePhotoPreviews([]);
+    setMedicineOcrResult(null);
+    setMedicineOcrError(null);
+    setIsMedicineOcrLoading(false);
+    setMedicineNormalizeResult(null);
+    setMedicineNormalizeError(null);
+    setSelectedMedicineCandidates({});
+    setMedicineSafetyResult(null);
+    setMedicineSafetyError(null);
+    setIsMedicineSafetyLoading(false);
+    setMedicineUserAge("");
     setHospitalStep("input");
     setCostStep("body");
   }, []);
@@ -71,7 +115,7 @@ export default function Home() {
     if (view === "cost") {
       if (costStep === "body") return "어떤 부위가 불편한지 선택해주세요. 어깨, 무릎, 허리 중에서 고를 수 있어요.";
       if (costStep === "treatment") return `${selectedCostBody} 통증에 대해 알고 싶은 치료나 검사를 선택해주세요.`;
-      if (costStep === "estimate") return `${selectedCostBody} 부위의 ${selectedTreatment} 예상 비용은 ${treatmentCosts[selectedTreatment]} 정도예요. 병원마다 차이가 있을 수 있어요.`;
+      if (costStep === "estimate") return `${selectedCostBody} 부위의 ${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "병원마다 차이가 있을 수 있어요."}`;
       if (costStep === "chat") return "궁금한 병원비를 말하거나, 예상 비용 안내를 음성으로 다시 들을 수 있어요.";
       return "아픈 부위와 치료 또는 검사를 선택하면 예상 병원비를 안내합니다.";
     }
@@ -82,6 +126,148 @@ export default function Home() {
     if (medicineStep === "capture") setView("home");
     else setMedicineStep("capture");
   }, [medicineStep]);
+
+  const handleMedicineAnalyze = useCallback(async () => {
+    if (!medicinePhotoPreviews.length) {
+      speak("먼저 약 봉투나 처방전 사진을 한 장 이상 찍어주세요.");
+      return;
+    }
+    setIsMedicineOcrLoading(true);
+    setMedicineOcrError(null);
+    setMedicineOcrResult(null);
+    setMedicineNormalizeResult(null);
+    setMedicineNormalizeError(null);
+    setSelectedMedicineCandidates({});
+    setMedicineSafetyResult(null);
+    setMedicineSafetyError(null);
+    setMedicineStep("ocr");
+    if (medicinePhotoPreviews.length === 1) {
+      speak("사진 한 장을 바로 분석합니다.");
+    } else {
+      speak(`${medicinePhotoPreviews.length}장 사진을 한 묶음으로 모아서 분석합니다.`);
+    }
+
+    try {
+      const formData = new FormData();
+      medicinePhotoPreviews.forEach((photo) => formData.append("files", photo.file, photo.name));
+      const response = await fetch(`${API_BASE_URL}/api/ocr/medicine-bags`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.reason || "OCR 분석에 실패했어요.");
+      }
+
+      const medicineNames = (data.medicine_bags || []).flatMap((bag) => bag.medicine_names || []).filter(Boolean);
+      let normalizeData = null;
+      if (medicineNames.length) {
+        const normalizeResponse = await fetch(`${API_BASE_URL}/api/medicines/normalize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ medicine_names: medicineNames }),
+        });
+        normalizeData = await normalizeResponse.json();
+        if (!normalizeResponse.ok || normalizeData.ok === false) {
+          throw new Error(normalizeData.reason || "약 후보 확인에 실패했어요.");
+        }
+        const initialSelected = {};
+        normalizeData.items?.forEach((item, index) => {
+          if (item.top_candidate) initialSelected[index] = item.top_candidate;
+        });
+        setSelectedMedicineCandidates(initialSelected);
+      }
+
+      setMedicineOcrResult(data);
+      setMedicineNormalizeResult(normalizeData);
+      setMedicineStep("review");
+      speak("사진 분석이 끝났어요. 약 후보가 맞는지 확인해주세요.");
+    } catch (error) {
+      setMedicineOcrError(error.message || "OCR 분석에 실패했어요.");
+      setMedicineNormalizeError(error.message || "약 후보 확인에 실패했어요.");
+      setMedicineStep("review");
+      speak("사진 분석에 실패했어요. 화면의 안내를 확인해주세요.");
+    } finally {
+      setIsMedicineOcrLoading(false);
+    }
+  }, [medicinePhotoPreviews, speak]);
+
+  const handleMedicineResetPhotos = useCallback(() => {
+    setPreviewUrl(null);
+    setMedicinePhotoPreviews([]);
+    setMedicineOcrResult(null);
+    setMedicineOcrError(null);
+    setIsMedicineOcrLoading(false);
+    setMedicineNormalizeResult(null);
+    setMedicineNormalizeError(null);
+    setSelectedMedicineCandidates({});
+    setMedicineSafetyResult(null);
+    setMedicineSafetyError(null);
+    setIsMedicineSafetyLoading(false);
+    setMedicineUserAge("");
+    speak("촬영한 사진을 비웠어요. 다시 촬영해주세요.");
+  }, [speak]);
+
+  const handleSelectMedicineCandidate = useCallback((index, candidate) => {
+    setSelectedMedicineCandidates((current) => ({ ...current, [index]: candidate }));
+  }, []);
+
+  const handleRunMedicineSafetyCheck = useCallback(async () => {
+    const selected = (medicineNormalizeResult?.items || [])
+      .map((item, index) => {
+        const candidate = selectedMedicineCandidates[index];
+        if (!candidate) return null;
+        return {
+          display_name: candidate.alias || item.input,
+          product_code: candidate.product_code,
+          ingredient_code: candidate.ingredient_code,
+        };
+      })
+      .filter(Boolean);
+
+    if (!selected.length) {
+      setMedicineSafetyError("선택된 약 후보가 없어요. 약 이름을 다시 확인해주세요.");
+      speak("선택된 약 후보가 없어요. 약 이름을 다시 확인해주세요.");
+      return;
+    }
+
+    const parsedAge = Number.parseInt(medicineUserAge, 10);
+    if (!Number.isFinite(parsedAge) || parsedAge < 1 || parsedAge > 120) {
+      setMedicineSafetyError("나이를 숫자로 입력해주세요.");
+      speak("나이를 숫자로 입력해주세요.");
+      return;
+    }
+
+    setIsMedicineSafetyLoading(true);
+    setMedicineSafetyError(null);
+    setMedicineSafetyResult(null);
+    setMedicineStep("dur");
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/safety/check-selected`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          selected_medicines: selected,
+          age: parsedAge,
+          has_herbal_medicine: hasHerbalMedicine === true,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.reason || "DUR 분석에 실패했어요.");
+      }
+      setMedicineSafetyResult(data);
+      setMedicineStep("result");
+      speak("DUR 분석이 끝났어요. 결과를 확인해주세요.");
+    } catch (error) {
+      setMedicineSafetyError(error.message || "DUR 분석에 실패했어요.");
+      setMedicineStep("result");
+      speak("DUR 분석에 실패했어요. 화면 안내를 확인해주세요.");
+    } finally {
+      setIsMedicineSafetyLoading(false);
+    }
+  }, [hasHerbalMedicine, medicineNormalizeResult, selectedMedicineCandidates, medicineUserAge, speak]);
 
   const handleHospitalBack = useCallback(() => {
     if (hospitalStep === "input") setView("home");
@@ -118,19 +304,19 @@ export default function Home() {
   const handleSelectTreatment = useCallback(
     (treatment) => {
       setSelectedTreatment(treatment);
-      speak(`${treatment} 예상 비용은 ${treatmentCosts[treatment]} 정도예요. 병원마다 차이가 있을 수 있어요.`);
+      speak(`${treatment}은 ${treatmentCosts[treatment]} 정도예요. ${treatmentCostDetails[treatment]?.note ?? "병원마다 차이가 있을 수 있어요."}`);
     },
     [speak]
   );
 
   const handleCostSpeak = useCallback(() => {
     speak(
-      `${selectedCostBody} 부위의 ${selectedTreatment} 예상 비용은 ${treatmentCosts[selectedTreatment]} 정도예요. 건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요.`
+      `${selectedCostBody} 부위의 ${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요."}`
     );
   }, [speak, selectedCostBody, selectedTreatment]);
 
   const handleCostAsk = useCallback(() => {
-    speak("궁금한 병원비를 말씀해주세요. 예를 들어, MRI 비용은 얼마예요 라고 말할 수 있어요.");
+    speak("궁금한 병원비를 말씀해주세요. 예를 들어, MRI도 건강보험이 되나요 라고 말할 수 있어요.");
   }, [speak]);
 
   return (
@@ -191,13 +377,29 @@ export default function Home() {
           <MedicineFlowScreen
             step={medicineStep}
             previewUrl={previewUrl}
+            photoPreviews={medicinePhotoPreviews}
+            ocrResult={medicineOcrResult}
+            ocrError={medicineOcrError}
+            normalizeResult={medicineNormalizeResult}
+            normalizeError={medicineNormalizeError}
+            selectedCandidates={selectedMedicineCandidates}
+            safetyResult={medicineSafetyResult}
+            safetyError={medicineSafetyError}
+            isSafetyLoading={isMedicineSafetyLoading}
+            isOcrLoading={isMedicineOcrLoading}
             hasHerbalMedicine={hasHerbalMedicine}
+            userAge={medicineUserAge}
             cameraInputRef={cameraInputRef}
             galleryInputRef={galleryInputRef}
             onImageChange={handleImage}
+            onAnalyzePhotos={handleMedicineAnalyze}
+            onResetPhotos={handleMedicineResetPhotos}
+            onSelectCandidate={handleSelectMedicineCandidate}
+            onRunSafetyCheck={handleRunMedicineSafetyCheck}
             onBack={handleMedicineBack}
             onStepChange={setMedicineStep}
             onHerbalChange={setHasHerbalMedicine}
+            onAgeChange={setMedicineUserAge}
             onSpeak={speak}
           />
         )}

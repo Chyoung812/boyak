@@ -1,0 +1,586 @@
+{
+  "source": {
+    "id": "11990",
+    "name": "건강보험심사평가원_수가기준정보조회서비스",
+    "endpoint": "https://apis.data.go.kr/B551182/mdfeeCrtrInfoService/getDiagnossMdfeeList",
+    "price_field": "unprc1 의원단가",
+    "note": "11990 급여 수가 단가 기반. 본인부담은 65세 이상 의원 외래 단순 구간과 일반 30%를 함께 표시한 추정치입니다."
+  },
+  "assumptions": [
+    "기본 안내 대상은 동네 의원 외래입니다.",
+    "수가 단가는 건강보험 급여 행위 기준이며 최종 청구액이 아닙니다.",
+    "65세 이상 본인부담 추정은 총액 구간을 단순 적용한 화면용 추정입니다.",
+    "약국 약값은 제외하고 병원 창구에서 결제하는 급여 진료비만 표시합니다.",
+    "약 처방이 있으면 병원 창구 진료비를 낸 뒤 처방전을 받아 약국으로 이동하며, 약국 결제액은 화면 금액에서 제외합니다.",
+    "주사, 추가 촬영, 야간/공휴일 가산은 별도입니다."
+  ],
+  "symptoms": {
+    "shoulder": {
+      "label": "어깨 통증",
+      "default_provider": "동네 의원",
+      "default_departments": [
+        "정형외과 의원",
+        "신경외과 의원",
+        "마취통증의학과 의원",
+        "재활의학과 의원"
+      ],
+      "steps": [
+        {
+          "id": "consult_only",
+          "title": "진찰만(검사·처방 없음)",
+          "likelihood": "최소 기준",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "약 처방 없음 가정",
+              "included": false,
+              "description": "검사·치료·약 처방 없이 진찰만 받은 최소 기준",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 18840,
+          "estimated_elder_copay": 1884,
+          "estimated_general_copay": 5652,
+          "display_price": "병원 1천~2천원대 가능",
+          "display_range": "병원 창구 급여 기준: 65세 이상 1,884원 추정 · 일반 30% 기준 5,652원",
+          "note": "가능은 하지만 최소 기준입니다. 통증 방문에서는 약 처방이나 X-ray가 붙는 경우가 많습니다.",
+          "caveat": "야간/공휴일/검진 당일/의료급여·산정특례 여부에 따라 달라질 수 있음"
+        },
+        {
+          "id": "consult_xray",
+          "title": "진찰 + 부위별 X-ray + 약 처방 가능",
+          "likelihood": "흔한 흐름",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            },
+            {
+              "code": "G3302",
+              "name": "견관절2매",
+              "division": "다133나",
+              "clinic_fee": 9570,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "검사비",
+              "included": true,
+              "description": "X-ray 촬영 급여 수가 포함. 촬영 매수·부위가 늘면 달라짐",
+              "item_codes": [
+                "G3302"
+              ]
+            },
+            {
+              "label": "약 처방 가능",
+              "included": true,
+              "description": "진찰 후 약이 필요하면 병원 창구 진료비를 내고 처방전을 받아 약국으로 이동. 약국 결제액은 제외",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 28410,
+          "estimated_elder_copay": 8523,
+          "estimated_general_copay": 8523,
+          "display_price": "병원 8천~1만원대",
+          "display_range": "병원 창구 급여 기준: 65세 이상 8,523원 추정 · 일반 30% 기준 8,523원",
+          "note": "통증 첫 방문에서 진찰 후 기본 X-ray를 확인하고, 필요하면 약 처방을 받는 흐름",
+          "caveat": "X-ray 검사비는 포함. 촬영 부위·매수, 약 처방 여부, 야간/공휴일 진료에 따라 병원 결제액이 달라질 수 있음"
+        },
+        {
+          "id": "consult_xray_basic_treatment",
+          "title": "진찰 + X-ray + 기본 물리치료 + 약 처방 가능",
+          "likelihood": "치료 추가",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            },
+            {
+              "code": "G3302",
+              "name": "견관절2매",
+              "division": "다133나",
+              "clinic_fee": 9570,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM010",
+              "name": "표층열치료",
+              "division": "사101",
+              "clinic_fee": 1010,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM020",
+              "name": "심층열치료[1일당]",
+              "division": "사102",
+              "clinic_fee": 1440,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM080",
+              "name": "간섭파전류치료[ICT]",
+              "division": "사104주",
+              "clinic_fee": 4490,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "검사비",
+              "included": true,
+              "description": "X-ray 촬영 급여 수가 포함. 촬영 매수·부위가 늘면 달라짐",
+              "item_codes": [
+                "G3302"
+              ]
+            },
+            {
+              "label": "기본치료비",
+              "included": true,
+              "description": "열치료·전기치료 등 급여 물리치료 조합 포함",
+              "item_codes": [
+                "MM010",
+                "MM020",
+                "MM080"
+              ]
+            },
+            {
+              "label": "약 처방 가능",
+              "included": true,
+              "description": "진찰 후 약이 필요하면 병원 창구 진료비를 내고 처방전을 받아 약국으로 이동. 약국 결제액은 제외",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 35350,
+          "estimated_elder_copay": 10605,
+          "estimated_general_copay": 10605,
+          "display_price": "병원 1만원 안팎부터",
+          "display_range": "병원 창구 급여 기준: 65세 이상 10,605원 추정 · 일반 30% 기준 10,605원",
+          "note": "X-ray 후 열치료·전기치료 같은 기본 보존치료와 약 처방이 함께 나올 수 있는 경우",
+          "caveat": "X-ray 검사비와 기본 물리치료비는 포함. 실제 치료 조합과 횟수, 약 처방 여부, 주사 추가 여부에 따라 병원 결제액이 달라질 수 있음"
+        }
+      ],
+      "conditional_items": [
+        "약을 처방받는 경우: 병원 창구 진료비 결제 후 처방전을 받아 약국으로 이동합니다. 약국 결제액은 현재 화면에서 제외",
+        "추가 촬영·주사·특수검사·비급여 치료를 권유받으면 1회 금액과 예상 횟수를 먼저 확인",
+        "당장 첫 방문 화면은 진찰·X-ray·기본 물리치료·약 처방 가능 흐름까지만 안내"
+      ]
+    },
+    "knee": {
+      "label": "무릎 통증",
+      "default_provider": "동네 의원",
+      "default_departments": [
+        "정형외과 의원",
+        "신경외과 의원",
+        "마취통증의학과 의원",
+        "재활의학과 의원"
+      ],
+      "steps": [
+        {
+          "id": "consult_only",
+          "title": "진찰만(검사·처방 없음)",
+          "likelihood": "최소 기준",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "약 처방 없음 가정",
+              "included": false,
+              "description": "검사·치료·약 처방 없이 진찰만 받은 최소 기준",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 18840,
+          "estimated_elder_copay": 1884,
+          "estimated_general_copay": 5652,
+          "display_price": "병원 1천~2천원대 가능",
+          "display_range": "병원 창구 급여 기준: 65세 이상 1,884원 추정 · 일반 30% 기준 5,652원",
+          "note": "가능은 하지만 최소 기준입니다. 통증 방문에서는 약 처방이나 X-ray가 붙는 경우가 많습니다.",
+          "caveat": "야간/공휴일/검진 당일/의료급여·산정특례 여부에 따라 달라질 수 있음"
+        },
+        {
+          "id": "consult_xray",
+          "title": "진찰 + 부위별 X-ray + 약 처방 가능",
+          "likelihood": "흔한 흐름",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            },
+            {
+              "code": "G7202",
+              "name": "슬관절2매",
+              "division": "다172나",
+              "clinic_fee": 8730,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "검사비",
+              "included": true,
+              "description": "X-ray 촬영 급여 수가 포함. 촬영 매수·부위가 늘면 달라짐",
+              "item_codes": [
+                "G7202"
+              ]
+            },
+            {
+              "label": "약 처방 가능",
+              "included": true,
+              "description": "진찰 후 약이 필요하면 병원 창구 진료비를 내고 처방전을 받아 약국으로 이동. 약국 결제액은 제외",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 27570,
+          "estimated_elder_copay": 8271,
+          "estimated_general_copay": 8271,
+          "display_price": "병원 8천~1만원대",
+          "display_range": "병원 창구 급여 기준: 65세 이상 8,271원 추정 · 일반 30% 기준 8,271원",
+          "note": "통증 첫 방문에서 진찰 후 기본 X-ray를 확인하고, 필요하면 약 처방을 받는 흐름",
+          "caveat": "X-ray 검사비는 포함. 촬영 부위·매수, 약 처방 여부, 야간/공휴일 진료에 따라 병원 결제액이 달라질 수 있음"
+        },
+        {
+          "id": "consult_xray_basic_treatment",
+          "title": "진찰 + X-ray + 기본 물리치료 + 약 처방 가능",
+          "likelihood": "치료 추가",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            },
+            {
+              "code": "G7202",
+              "name": "슬관절2매",
+              "division": "다172나",
+              "clinic_fee": 8730,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM010",
+              "name": "표층열치료",
+              "division": "사101",
+              "clinic_fee": 1010,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM020",
+              "name": "심층열치료[1일당]",
+              "division": "사102",
+              "clinic_fee": 1440,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM080",
+              "name": "간섭파전류치료[ICT]",
+              "division": "사104주",
+              "clinic_fee": 4490,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "검사비",
+              "included": true,
+              "description": "X-ray 촬영 급여 수가 포함. 촬영 매수·부위가 늘면 달라짐",
+              "item_codes": [
+                "G7202"
+              ]
+            },
+            {
+              "label": "기본치료비",
+              "included": true,
+              "description": "열치료·전기치료 등 급여 물리치료 조합 포함",
+              "item_codes": [
+                "MM010",
+                "MM020",
+                "MM080"
+              ]
+            },
+            {
+              "label": "약 처방 가능",
+              "included": true,
+              "description": "진찰 후 약이 필요하면 병원 창구 진료비를 내고 처방전을 받아 약국으로 이동. 약국 결제액은 제외",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 34510,
+          "estimated_elder_copay": 10353,
+          "estimated_general_copay": 10353,
+          "display_price": "병원 1만원 안팎부터",
+          "display_range": "병원 창구 급여 기준: 65세 이상 10,353원 추정 · 일반 30% 기준 10,353원",
+          "note": "X-ray 후 열치료·전기치료 같은 기본 보존치료와 약 처방이 함께 나올 수 있는 경우",
+          "caveat": "X-ray 검사비와 기본 물리치료비는 포함. 실제 치료 조합과 횟수, 약 처방 여부, 주사 추가 여부에 따라 병원 결제액이 달라질 수 있음"
+        }
+      ],
+      "conditional_items": [
+        "약을 처방받는 경우: 병원 창구 진료비 결제 후 처방전을 받아 약국으로 이동합니다. 약국 결제액은 현재 화면에서 제외",
+        "추가 촬영·주사·특수검사·비급여 치료를 권유받으면 1회 금액과 예상 횟수를 먼저 확인",
+        "당장 첫 방문 화면은 진찰·X-ray·기본 물리치료·약 처방 가능 흐름까지만 안내"
+      ]
+    },
+    "back": {
+      "label": "허리 통증",
+      "default_provider": "동네 의원",
+      "default_departments": [
+        "정형외과 의원",
+        "신경외과 의원",
+        "마취통증의학과 의원",
+        "재활의학과 의원"
+      ],
+      "steps": [
+        {
+          "id": "consult_only",
+          "title": "진찰만(검사·처방 없음)",
+          "likelihood": "최소 기준",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "약 처방 없음 가정",
+              "included": false,
+              "description": "검사·치료·약 처방 없이 진찰만 받은 최소 기준",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 18840,
+          "estimated_elder_copay": 1884,
+          "estimated_general_copay": 5652,
+          "display_price": "병원 1천~2천원대 가능",
+          "display_range": "병원 창구 급여 기준: 65세 이상 1,884원 추정 · 일반 30% 기준 5,652원",
+          "note": "가능은 하지만 최소 기준입니다. 통증 방문에서는 약 처방이나 X-ray가 붙는 경우가 많습니다.",
+          "caveat": "야간/공휴일/검진 당일/의료급여·산정특례 여부에 따라 달라질 수 있음"
+        },
+        {
+          "id": "consult_xray",
+          "title": "진찰 + 부위별 X-ray + 약 처방 가능",
+          "likelihood": "흔한 흐름",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            },
+            {
+              "code": "G4602",
+              "name": "요천추2매",
+              "division": "다146나",
+              "clinic_fee": 9700,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "검사비",
+              "included": true,
+              "description": "X-ray 촬영 급여 수가 포함. 촬영 매수·부위가 늘면 달라짐",
+              "item_codes": [
+                "G4602"
+              ]
+            },
+            {
+              "label": "약 처방 가능",
+              "included": true,
+              "description": "진찰 후 약이 필요하면 병원 창구 진료비를 내고 처방전을 받아 약국으로 이동. 약국 결제액은 제외",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 28540,
+          "estimated_elder_copay": 8562,
+          "estimated_general_copay": 8562,
+          "display_price": "병원 8천~1만원대",
+          "display_range": "병원 창구 급여 기준: 65세 이상 8,562원 추정 · 일반 30% 기준 8,562원",
+          "note": "통증 첫 방문에서 진찰 후 기본 X-ray를 확인하고, 필요하면 약 처방을 받는 흐름",
+          "caveat": "X-ray 검사비는 포함. 촬영 부위·매수, 약 처방 여부, 야간/공휴일 진료에 따라 병원 결제액이 달라질 수 있음"
+        },
+        {
+          "id": "consult_xray_basic_treatment",
+          "title": "진찰 + X-ray + 기본 물리치료 + 약 처방 가능",
+          "likelihood": "치료 추가",
+          "items": [
+            {
+              "code": "AA154",
+              "name": "초진진찰료-의원",
+              "division": "가1가(2)",
+              "clinic_fee": 18840,
+              "coverage": "급여"
+            },
+            {
+              "code": "G4602",
+              "name": "요천추2매",
+              "division": "다146나",
+              "clinic_fee": 9700,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM010",
+              "name": "표층열치료",
+              "division": "사101",
+              "clinic_fee": 1010,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM020",
+              "name": "심층열치료[1일당]",
+              "division": "사102",
+              "clinic_fee": 1440,
+              "coverage": "급여"
+            },
+            {
+              "code": "MM080",
+              "name": "간섭파전류치료[ICT]",
+              "division": "사104주",
+              "clinic_fee": 4490,
+              "coverage": "급여"
+            }
+          ],
+          "cost_components": [
+            {
+              "label": "진찰료",
+              "included": true,
+              "description": "병원 창구 결제에 포함되는 급여 초진 진찰료",
+              "item_codes": [
+                "AA154"
+              ]
+            },
+            {
+              "label": "검사비",
+              "included": true,
+              "description": "X-ray 촬영 급여 수가 포함. 촬영 매수·부위가 늘면 달라짐",
+              "item_codes": [
+                "G4602"
+              ]
+            },
+            {
+              "label": "기본치료비",
+              "included": true,
+              "description": "열치료·전기치료 등 급여 물리치료 조합 포함",
+              "item_codes": [
+                "MM010",
+                "MM020",
+                "MM080"
+              ]
+            },
+            {
+              "label": "약 처방 가능",
+              "included": true,
+              "description": "진찰 후 약이 필요하면 병원 창구 진료비를 내고 처방전을 받아 약국으로 이동. 약국 결제액은 제외",
+              "item_codes": []
+            }
+          ],
+          "clinic_fee_total": 35480,
+          "estimated_elder_copay": 10644,
+          "estimated_general_copay": 10644,
+          "display_price": "병원 1만원 안팎부터",
+          "display_range": "병원 창구 급여 기준: 65세 이상 10,644원 추정 · 일반 30% 기준 10,644원",
+          "note": "X-ray 후 열치료·전기치료 같은 기본 보존치료와 약 처방이 함께 나올 수 있는 경우",
+          "caveat": "X-ray 검사비와 기본 물리치료비는 포함. 실제 치료 조합과 횟수, 약 처방 여부, 주사 추가 여부에 따라 병원 결제액이 달라질 수 있음"
+        }
+      ],
+      "conditional_items": [
+        "약을 처방받는 경우: 병원 창구 진료비 결제 후 처방전을 받아 약국으로 이동합니다. 약국 결제액은 현재 화면에서 제외",
+        "추가 촬영·주사·특수검사·비급여 치료를 권유받으면 1회 금액과 예상 횟수를 먼저 확인",
+        "당장 첫 방문 화면은 진찰·X-ray·기본 물리치료·약 처방 가능 흐름까지만 안내"
+      ]
+    }
+  }
+}

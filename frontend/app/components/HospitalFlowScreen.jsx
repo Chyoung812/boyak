@@ -47,7 +47,7 @@ function HospitalFlowScreen({
           type="button"
           aria-label="길찾기 흐름 음성 안내 듣기"
           onClick={() =>
-            onSpeak("증상을 말하거나 선택하면 진료과를 추천하고, 주변 병원과 약국을 찾은 뒤 교통약자에게 편한 경로로 안내합니다.")
+            onSpeak("증상을 말하거나 선택하면 진료과를 추천하고, 주변 병원 후보를 보여준 뒤 실제 길찾기는 카카오맵 링크로 연결합니다.")
           }
         >
           <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
@@ -282,16 +282,15 @@ function HospitalSelectPanel({ hospital, onStepChange, onSpeak }) {
           {hospital.status}
         </p>
       </article>
-      <button
-        className="mt-6 min-h-[96px] w-full rounded-2xl bg-boyak-green px-7 text-3xl font-black text-white lg:mt-4 lg:min-h-14 lg:text-xl"
-        type="button"
-        onClick={() => {
-          onStepChange("route");
-          onSpeak(`${hospital.name}까지 길안내를 시작합니다. 200미터 직진하세요.`);
-        }}
+      <a
+        className="mt-6 flex min-h-[96px] w-full items-center justify-center rounded-2xl bg-boyak-green px-7 text-center text-3xl font-black text-white lg:mt-4 lg:min-h-14 lg:text-xl"
+        href={hospital.mapUrl || `https://map.kakao.com/link/search/${encodeURIComponent(hospital.name)}`}
+        target="_blank"
+        rel="noreferrer"
+        onClick={() => onSpeak(`${hospital.name} 길찾기를 카카오맵에서 엽니다.`)}
       >
-        길안내 시작
-      </button>
+        카카오맵으로 길찾기
+      </a>
     </div>
   );
 }
