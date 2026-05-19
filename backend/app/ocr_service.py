@@ -49,7 +49,10 @@ async def extract_medicine_bags_from_images(files: List[UploadFile]) -> Dict[str
         content_parts.append({"type": "text", "text": f"이미지 {index}: bag_id=photo_{index}, filename={file.filename or ''}"})
         content_parts.append({
             "type": "image_url",
-            "image_url": {"url": _image_data_url(content, file.content_type or "image/jpeg")},
+            "image_url": {
+                "url": _image_data_url(content, file.content_type or "image/jpeg"),
+                "detail": "high",
+            },
         })
 
     body = {

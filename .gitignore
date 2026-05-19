@@ -32,3 +32,7 @@ backend/data/processed/
 .DS_Store
 .vscode/
 .idea/
+
+# local team env share files
+backend/env_for_team*.txt
+backend/env_template_for_team.txt

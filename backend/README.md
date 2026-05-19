@@ -1,6 +1,6 @@
 # Boyak Backend
 
-## 실행
+## 로컬 실행
 
 ```bash
 cd /home/kyung/workspace/hw/academy/boyak/backend
@@ -8,16 +8,60 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# .env에 PUBLIC_DATA_SERVICE_KEY, KAKAO_REST_API_KEY 입력
-uvicorn app.main:app --reload --port 8000
+# .env에 필요한 키 입력
+uvicorn app.main:app --reload --port 8001
 ```
 
 확인:
 
 ```bash
-curl http://localhost:8000/api/health
-curl 'http://localhost:8000/api/costs/estimate?body=무릎&treatment=X-ray%20검사'
+curl http://localhost:8001/api/health
+curl 'http://localhost:8001/api/costs/estimate?body=무릎&treatment=X-ray%20검사'
+curl -X POST http://localhost:8001/api/medicines/normalize \
+  -H 'Content-Type: application/json' \
+  -d '{"medicine_names":["타이레놀"]}'
 ```
+
+## DUR DB 전략
+
+로컬 기본값은 SQLite입니다.
+
+```txt
+backend/data/processed/dur_index.sqlite3
+```
+
+배포에서는 `DATABASE_URL`이 있으면 SQLite 대신 Postgres/Neon을 조회합니다.
+
+```dotenv
+DATABASE_URL=postgresql://USER:PASSWORD@HOST/DB?sslmode=require
+```
+
+SQLite → Neon 마이그레이션:
+
+```bash
+cd backend
+source .venv/bin/activate
+DATABASE_URL='postgresql://...' python scripts/migrate_sqlite_to_postgres.py
+```
+
+마이그레이션되는 테이블:
+
+```txt
+drug_products
+drug_aliases
+safety_rules
+contraindication_pairs
+```
+
+## Docker
+
+```bash
+cd backend
+docker build -t boyak-backend .
+docker run --rm -p 8001:8000 --env-file .env boyak-backend
+```
+
+Render Docker 배포 시 `DATABASE_URL`, `OPENAI_API_KEY`, `PUBLIC_DATA_SERVICE_KEY`, `FOODSAFETY_API_KEY`, `CORS_ORIGINS`를 환경변수로 등록합니다.
 
 ## 데이터 연결 우선순위
 
@@ -32,4 +76,4 @@ curl 'http://localhost:8000/api/costs/estimate?body=무릎&treatment=X-ray%20검
 
 - 공공데이터 인증키와 카카오 REST 키는 `backend/.env`에만 둔다.
 - 프론트 `.env.local`에는 공개 가능한 API base URL만 둔다.
-- `.env`, `backend/.env`, `frontend/.env.local`, `node_modules`, `.next`는 gitignore 처리됨.
+- `.env`, `backend/.env`, `frontend/.env.local`, `node_modules`, `.next`, `data/processed`는 gitignore 처리한다.

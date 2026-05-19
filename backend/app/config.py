@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     public_data_service_key: str = Field(default="", alias="PUBLIC_DATA_SERVICE_KEY")
+    database_url: str = Field(default="", alias="DATABASE_URL")
     public_data_key_mode: str = Field(default="decoding", alias="PUBLIC_DATA_KEY_MODE")
 
     dur_prdlst_info_base_url: str = Field(
