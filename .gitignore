@@ -1,9 +1,23 @@
-.env
-__pycache__/
-*.pyc
-
+# 환경변수 (절대 커밋 금지)
 .env
 *.env
+frontend/.env.local
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 원본 DUR CSV (용량 초과 — 심평원에서 직접 다운로드)
+backend/DUR_list_20250601/
+
+# 서버 로그
+backend/logs/
+
+# Node / Next.js
 node_modules/
 .next/
-backend/logs/
+
+# macOS
+.DS_Store
+**/.DS_Store

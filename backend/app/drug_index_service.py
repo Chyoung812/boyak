@@ -223,12 +223,15 @@ def safety_check_by_codes(product_codes: Sequence[str], ingredient_codes: Sequen
         if ics:
             clauses.append("ingredient_code IN (%s)" % ",".join("?" for _ in ics))
             params.extend(ics)
+        # 성분 기준으로 중복 제거: 동일 (category, ingredient_code) 중 대표 1건만
         rows = conn.execute(
             f"""
-            SELECT category, product_code, ingredient_code, product_name, ingredient_name, reason, source_date, source
+            SELECT category, product_code, ingredient_code, product_name, ingredient_name,
+                   reason, source_date, age_value, age_condition, source
             FROM safety_rules
             WHERE ({' OR '.join(clauses)}) AND category != '임부금기'
-            LIMIT 30
+            GROUP BY category, ingredient_code
+            LIMIT 50
             """,
             params,
         ).fetchall()
