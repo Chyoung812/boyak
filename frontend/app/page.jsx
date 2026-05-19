@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   HomeIcon,
   Hospital,
@@ -8,9 +8,10 @@ import {
   Pill,
   Settings,
   Volume2,
+  VolumeX,
 } from "lucide-react";
 
-import { featureCards, nearbyHospitals, treatmentCostDetails, treatmentCosts } from "./constants";
+import { doctorTips, featureCards, nearbyHospitals, treatmentCostDetails, treatmentCosts } from "./constants";
 import MedicineFlowScreen from "./components/MedicineFlowScreen";
 import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
@@ -37,6 +38,11 @@ export default function Home() {
   const [selectedSymptom, setSelectedSymptom] = useState(null);
   const [hospitalStep, setHospitalStep] = useState("input");
   const [hospitalIndex, setHospitalIndex] = useState(0);
+  const [hospitals, setHospitals] = useState([]);
+  const [isHospitalLoading, setIsHospitalLoading] = useState(false);
+  const [hospitalDepartment, setHospitalDepartment] = useState("");
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedHomeMedicines, setSelectedHomeMedicines] = useState([]);
   const [costStep, setCostStep] = useState("body");
   const [selectedCostBody, setSelectedCostBody] = useState("허리");
   const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 약 처방 가능");
@@ -44,15 +50,20 @@ export default function Home() {
   const galleryInputRef = useRef(null);
 
   const speak = useCallback((message) => {
-    if (!("speechSynthesis" in window)) {
-      alert("이 브라우저에서는 음성 안내를 지원하지 않아요.");
-      return;
-    }
+    if (!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(message);
     utterance.lang = "ko-KR";
     utterance.rate = 0.88;
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const stopSpeaking = useCallback(() => {
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
   }, []);
 
   const handleImage = useCallback((event) => {
@@ -98,29 +109,35 @@ export default function Home() {
     setIsMedicineSafetyLoading(false);
     setMedicineUserAge("");
     setHospitalStep("input");
+    setHospitals([]);
+    setHospitalDepartment("");
+    setIsHospitalLoading(false);
+    setSelectedHomeMedicines([]);
     setCostStep("body");
   }, []);
 
   const getGlobalVoiceGuide = useCallback(() => {
     if (view === "medicine") {
-      if (medicineStep === "capture") return "약 봉투 또는 처방전을 촬영해주세요. 아래의 사진 촬영 버튼을 누르면 카메라 권한 확인 후 촬영할 수 있어요.";
-      if (medicineStep === "review") return "인식된 약 이름과 조제일자를 확인해주세요. 집에 있는 다른 약도 추가할 수 있어요.";
-      if (medicineStep === "herbal") return "한약을 함께 드시는지 예 또는 아니오로 알려주세요.";
-      if (medicineStep === "result") return "약 복용 안전 확인 결과를 안내합니다. 주의 문구가 있으면 약사나 의사에게 확인하세요.";
-      return "약 복용 안전 확인을 진행하고 있어요. 화면의 큰 파란 버튼을 눌러 다음 단계로 이동하세요.";
+      if (medicineStep === "capture") return "약 봉투를 촬영해주세요.";
+      if (medicineStep === "review") return "인식된 약 이름을 확인하고 맞는 후보를 선택해주세요.";
+      if (medicineStep === "add") return "집에 있는 다른 약을 추가로 선택해주세요.";
+      if (medicineStep === "herbal") return "나이를 입력하고 한약 복용 여부를 알려주세요.";
+      if (medicineStep === "result") return medicineSafetyResult?.tts_text || medicineSafetyResult?.message || "DUR 분석 결과를 확인하세요.";
+      return "약 복용 확인 중입니다.";
     }
     if (view === "hospital") {
-      return "아픈 곳을 말하거나 선택하면 가까운 병원을 추천하고 교통약자에게 편한 길로 안내합니다.";
+      if (hospitalStep === "results" && hospitals.length > 0)
+        return `${hospitals.length}개 병원을 찾았어요. 첫 번째가 보행자 맞춤 추천입니다.`;
+      return "아픈 곳을 말하거나 선택해주세요.";
     }
     if (view === "cost") {
-      if (costStep === "body") return "어떤 부위가 불편한지 선택해주세요. 어깨, 무릎, 허리 중에서 고를 수 있어요.";
-      if (costStep === "treatment") return `${selectedCostBody} 통증에 대해 알고 싶은 치료나 검사를 선택해주세요.`;
-      if (costStep === "estimate") return `${selectedCostBody} 부위의 ${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "병원마다 차이가 있을 수 있어요."}`;
-      if (costStep === "chat") return "궁금한 병원비를 말하거나, 예상 비용 안내를 음성으로 다시 들을 수 있어요.";
-      return "아픈 부위와 치료 또는 검사를 선택하면 예상 병원비를 안내합니다.";
+      if (costStep === "estimate") return `${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요.`;
+      if (costStep === "body") return "어떤 부위가 불편하세요?";
+      if (costStep === "treatment") return `${selectedCostBody}, 어떤 경우가 궁금하세요?`;
+      return "부위와 검사를 선택하면 예상 병원비를 안내합니다.";
     }
-    return "보약은 약 복용 확인, 병원 길찾기, 병원비 확인을 도와드려요. 필요한 큰 버튼을 눌러 시작하세요.";
-  }, [view, medicineStep, costStep, selectedCostBody, selectedTreatment]);
+    return "약, 병원 길찾기, 병원비 중 필요한 버튼을 눌러주세요.";
+  }, [view, medicineStep, costStep, selectedCostBody, selectedTreatment, hospitalStep, hospitals, medicineSafetyResult]);
 
   const handleMedicineBack = useCallback(() => {
     if (medicineStep === "capture") setView("home");
@@ -269,28 +286,94 @@ export default function Home() {
     }
   }, [hasHerbalMedicine, medicineNormalizeResult, selectedMedicineCandidates, medicineUserAge, speak]);
 
+  const handleToggleHomeMedicine = useCallback((medicine) => {
+    setSelectedHomeMedicines((prev) =>
+      prev.includes(medicine) ? prev.filter((m) => m !== medicine) : [...prev, medicine]
+    );
+  }, []);
+
   const handleHospitalBack = useCallback(() => {
     if (hospitalStep === "input") setView("home");
     else setHospitalStep("input");
   }, [hospitalStep]);
 
+  // TMap API 결과를 UI가 쓰는 형식으로 변환
+  const transformHospital = useCallback((h, dept) => ({
+    name: h.name,
+    department: dept,
+    walk: `도보 ${h.walk_time}분`,
+    distance: `${h.distance}m`,
+    route: h.route_type || "평지 위주 경로",
+    status: h.recommended_for_walking ? "보행자 맞춤 추천" : "진료 가능",
+    stairs: h.stairs ?? 0,
+    isFlat: h.is_flat ?? true,
+    recommendedForWalking: h.recommended_for_walking ?? false,
+    lat: h.lat,
+    lon: h.lon,
+    floor: h.floor || "1층",
+    mapUrl: `https://map.kakao.com/link/search/${encodeURIComponent(h.name)}`,
+  }), []);
+
   const handleSelectSymptom = useCallback(
-    (symptom) => {
+    async (symptom) => {
       setSelectedSymptom(symptom);
       setHospitalIndex(0);
       setHospitalStep("results");
-      speak(`${symptom} 증상을 입력했어요. AI가 진료과를 판단하고 거리순으로 가까운 병원을 추천합니다.`);
+      setIsHospitalLoading(true);
+      setHospitals([]);
+      speak(`${symptom}, 근처 병원을 찾는 중입니다.`);
+
+      try {
+        // 증상으로 진료과 분석
+        const analyzeRes = await fetch(`${API_BASE_URL}/api/hospitals/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ symptom }),
+        });
+        const analyzeData = await analyzeRes.json();
+        const dept = analyzeData.department || "정형외과";
+        setHospitalDepartment(dept);
+
+        // GPS 위치 가져오기
+        const pos = await new Promise((resolve) => {
+          if (!navigator.geolocation) {
+            resolve({ lat: 37.566481, lon: 126.985023 });
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
+            () => resolve({ lat: 37.566481, lon: 126.985023 }),
+            { timeout: 5000 }
+          );
+        });
+
+        // 근처 병원 검색
+        const nearbyRes = await fetch(`${API_BASE_URL}/api/hospitals/nearby`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ department: dept, lat: pos.lat, lon: pos.lon }),
+        });
+        const nearbyData = await nearbyRes.json();
+        const transformed = (nearbyData.hospitals || []).map((h) => transformHospital(h, dept));
+        setHospitals(transformed);
+      } catch {
+        // 실패시 정적 데이터로 fallback
+        setHospitals([]);
+      } finally {
+        setIsHospitalLoading(false);
+      }
     },
-    [speak]
+    [speak, transformHospital]
   );
 
   const handleSelectHospital = useCallback(
     (index) => {
       setHospitalIndex(index);
       setHospitalStep("select");
-      speak(`${nearbyHospitals[index].name}을 선택했어요. 길안내를 시작할 수 있어요.`);
+      const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
+      speak(`${displayHospitals[index]?.name}을 선택했어요. 길안내를 시작할 수 있어요.`);
     },
-    [speak]
+    [speak, hospitals]
   );
 
   const handleSelectBody = useCallback(
@@ -319,16 +402,23 @@ export default function Home() {
     speak("궁금한 병원비를 말씀해주세요. 예를 들어, MRI도 건강보험이 되나요 라고 말할 수 있어요.");
   }, [speak]);
 
+  const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
+
   return (
     <div className="min-h-screen bg-white text-boyak-ink">
-      {/* Global voice button */}
+      {/* Global voice button — 말하는 중이면 빨간 X 버튼으로 토글 */}
       <button
-        className="fixed bottom-5 right-5 z-50 grid size-16 place-items-center rounded-full bg-boyak-blue text-white shadow-soft transition active:scale-95 sm:bottom-7 sm:right-7 sm:size-20 lg:size-[72px]"
+        className={`fixed bottom-5 right-5 z-50 grid size-16 place-items-center rounded-full text-white shadow-soft transition active:scale-95 sm:bottom-7 sm:right-7 sm:size-20 lg:size-[72px] ${
+          isSpeaking ? "bg-red-500" : "bg-boyak-blue"
+        }`}
         type="button"
-        aria-label="현재 화면 음성 안내 듣기"
-        onClick={() => speak(getGlobalVoiceGuide())}
+        aria-label={isSpeaking ? "음성 끄기" : "현재 화면 음성 안내 듣기"}
+        onClick={isSpeaking ? stopSpeaking : () => speak(getGlobalVoiceGuide())}
       >
-        <Volume2 className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
+        {isSpeaking
+          ? <VolumeX className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
+          : <Volume2 className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
+        }
       </button>
 
       {/* Header */}
@@ -367,8 +457,8 @@ export default function Home() {
       <main
         className={
           view === "home"
-            ? "px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:h-[calc(100vh-73px)] lg:overflow-hidden lg:px-24 lg:py-6"
-            : "px-5 pb-16 pt-8 sm:px-10 lg:h-[calc(100vh-73px)] lg:overflow-hidden lg:px-16 lg:py-3 xl:px-20"
+            ? "px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:px-24 lg:py-6"
+            : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
         }
       >
         {view === "home" && <HomeSection onNavigate={setView} onSpeak={speak} />}
@@ -389,12 +479,14 @@ export default function Home() {
             isOcrLoading={isMedicineOcrLoading}
             hasHerbalMedicine={hasHerbalMedicine}
             userAge={medicineUserAge}
+            selectedHomeMedicines={selectedHomeMedicines}
             cameraInputRef={cameraInputRef}
             galleryInputRef={galleryInputRef}
             onImageChange={handleImage}
             onAnalyzePhotos={handleMedicineAnalyze}
             onResetPhotos={handleMedicineResetPhotos}
             onSelectCandidate={handleSelectMedicineCandidate}
+            onToggleHomeMedicine={handleToggleHomeMedicine}
             onRunSafetyCheck={handleRunMedicineSafetyCheck}
             onBack={handleMedicineBack}
             onStepChange={setMedicineStep}
@@ -408,7 +500,10 @@ export default function Home() {
           <HospitalFlowScreen
             step={hospitalStep}
             selectedSymptom={selectedSymptom}
-            hospital={nearbyHospitals[hospitalIndex]}
+            hospital={displayHospitals[hospitalIndex]}
+            hospitals={hospitals}
+            department={hospitalDepartment}
+            isLoading={isHospitalLoading}
             onBack={handleHospitalBack}
             onStepChange={setHospitalStep}
             onSelectSymptom={handleSelectSymptom}
@@ -436,6 +531,11 @@ export default function Home() {
 }
 
 function HomeSection({ onNavigate, onSpeak }) {
+  const [tipIdx, setTipIdx] = useState(0);
+  useEffect(() => {
+    setTipIdx(Math.floor(Math.random() * doctorTips.length));
+  }, []);
+  const tip = doctorTips[tipIdx];
   return (
     <section aria-labelledby="home-title">
       <div className="mb-5 sm:mb-7">
@@ -467,18 +567,17 @@ function HomeSection({ onNavigate, onSpeak }) {
       </div>
 
       <aside className="flex flex-col gap-4 rounded-xl border border-[#C8DAF7] bg-[#EDF4FF] p-4 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-        <div>
+        <div className="min-w-0 flex-1">
           <h2 className="mb-1 text-base font-black text-boyak-blue sm:text-lg">약손 박사의 한마디:</h2>
-          <p className="text-lg font-extrabold leading-relaxed sm:text-xl lg:text-2xl">
-            여러 병원 약을 함께 드실 땐 꼭 확인하세요.
-          </p>
+          <p className="text-lg font-extrabold leading-relaxed sm:text-xl lg:text-2xl">{tip.summary}</p>
+          <p className="mt-1 text-base font-bold leading-relaxed text-boyak-muted sm:text-lg">{tip.detail}</p>
         </div>
         <button
-          className="min-h-14 rounded-lg bg-boyak-blue px-6 text-lg font-black text-white sm:text-xl lg:min-h-[64px] lg:px-9"
+          className="min-h-14 shrink-0 rounded-lg bg-boyak-blue px-6 text-lg font-black text-white sm:text-xl lg:min-h-[64px] lg:px-9"
           type="button"
-          onClick={() => onSpeak("여러 병원 약을 함께 드실 땐 꼭 확인하세요.")}
+          onClick={() => onSpeak(tip.detail)}
         >
-          한마디 듣기
+          자세히 듣기
         </button>
       </aside>
     </section>

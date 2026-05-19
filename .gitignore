@@ -1,38 +1,27 @@
-# dependencies
-node_modules/
-frontend/node_modules/
-
-# Next.js build/dev output
-.next/
-frontend/.next/
-frontend/out/
+# 환경변수 (절대 커밋 금지)
+.env
+*.env
+frontend/.env.local
 
 # Python
 __pycache__/
-*.py[cod]
-.venv/
-venv/
-.pytest_cache/
+*.pyc
+*.pyo
 
-# environment / secrets
-.env
-.env.*
-!.env.example
-backend/.env
-backend/.env.*
-!backend/.env.example
-frontend/.env.local
+# 원본 DUR CSV (용량 초과 — 심평원에서 직접 다운로드)
+backend/DUR_list_20250601/
 
-# data cache / downloaded raw/generated files
-backend/data/raw/
-backend/data/cache/
-backend/data/processed/
+# 서버 로그
+backend/logs/
 
-# OS/editor
+# Node / Next.js
+node_modules/
+.next/
+
+# macOS
 .DS_Store
-.vscode/
-.idea/
+**/.DS_Store
 
-# local team env share files
-backend/env_for_team*.txt
-backend/env_template_for_team.txt
+# Database
+*.sqlite3
+backend/data/processed/

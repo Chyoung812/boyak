@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     public_data_service_key: str = Field(default="", alias="PUBLIC_DATA_SERVICE_KEY")
-    database_url: str = Field(default="", alias="DATABASE_URL")
     public_data_key_mode: str = Field(default="decoding", alias="PUBLIC_DATA_KEY_MODE")
 
     dur_prdlst_info_base_url: str = Field(
@@ -41,6 +40,7 @@ class Settings(BaseSettings):
         default="I0760",
         alias="FOODSAFETY_SUPPLEMENT_INGREDIENT_SERVICE_ID",
     )
+    tmap_app_key: str = Field(default="", alias="TMAP_APP_KEY")
     kakao_rest_api_key: str = Field(default="", alias="KAKAO_REST_API_KEY")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")

@@ -1,19 +1,15 @@
-"use client";
-
-import { memo } from "react";
 import { ChevronLeft } from "lucide-react";
 
-function BackButton({ onClick }) {
+export default function BackButton({ onClick }) {
   return (
     <button
-      className="mb-7 inline-flex min-h-12 items-center gap-2 rounded-lg text-xl font-black text-boyak-blue lg:mb-3 lg:min-h-9 lg:text-lg"
       type="button"
       onClick={onClick}
+      className="mb-4 flex items-center gap-1 text-boyak-muted hover:text-boyak-ink transition-colors text-lg font-bold lg:text-sm"
+      aria-label="이전 화면으로 돌아가기"
     >
-      <ChevronLeft className="size-7 lg:size-6" aria-hidden="true" />
-      처음으로
+      <ChevronLeft className="size-6 lg:size-4" strokeWidth={2.5} aria-hidden="true" />
+      뒤로
     </button>
   );
 }
-
-export default memo(BackButton);

@@ -1,26 +1,38 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState, useCallback, useRef } from "react";
 import {
-  ArrowUp,
   Building2,
   CheckCircle,
-  Clock,
   MapPin,
   Mic,
   Navigation,
   Volume2,
+  Star,
 } from "lucide-react";
 
 import { hospitalFlowSteps, hospitalStepKeys, nearbyHospitals, symptomOptions } from "../constants";
 import BackButton from "./BackButton";
 import StepHeader from "./StepHeader";
 import FlowPanel from "./FlowPanel";
+import NavigationMap from "./NavigationMap";
+
+// 음성에서 증상 키워드 추출 (확인 메시지 표시용)
+const SYMPTOM_KEYWORDS = [
+  "허리", "요통", "무릎", "어깨", "두통", "머리", "배", "소화", "기침", "가슴",
+  "눈", "귀", "코", "목", "피부", "치아", "관절", "디스크", "척추", "발목",
+];
+function extractKeyword(text) {
+  return SYMPTOM_KEYWORDS.find((kw) => text.includes(kw)) ?? null;
+}
 
 function HospitalFlowScreen({
   step,
   selectedSymptom,
   hospital,
+  hospitals = [],
+  department = "",
+  isLoading = false,
   onBack,
   onStepChange,
   onSelectSymptom,
@@ -29,8 +41,9 @@ function HospitalFlowScreen({
 }) {
   const currentIndex = hospitalStepKeys.indexOf(step);
   const currentStepLabel = hospitalFlowSteps[currentIndex] ?? hospitalFlowSteps[0];
+  const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
   const recommendedDepartment =
-    selectedSymptom === "두통" ? "신경과 또는 가정의학과" : "정형외과 또는 통증의학과";
+    department || (selectedSymptom === "두통" ? "신경과 또는 가정의학과" : "정형외과 또는 통증의학과");
 
   return (
     <section aria-labelledby="hospital-flow-title">
@@ -47,7 +60,7 @@ function HospitalFlowScreen({
           type="button"
           aria-label="길찾기 흐름 음성 안내 듣기"
           onClick={() =>
-            onSpeak("증상을 말하거나 선택하면 진료과를 추천하고, 주변 병원 후보를 보여준 뒤 실제 길찾기는 카카오맵 링크로 연결합니다.")
+            onSpeak("증상을 말하거나 선택하면 진료과를 추천하고, 계단이 없는 평지 경로 위주로 가까운 병원을 안내합니다.")
           }
         >
           <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
@@ -87,38 +100,31 @@ function HospitalFlowScreen({
         <SymptomSelectPanel
           selectedSymptom={selectedSymptom}
           onSelect={onSelectSymptom}
-          onSpeak={() => onSpeak("어디가 아프세요? 허리, 무릎, 어깨, 두통 중에서 말하거나 큰 버튼을 선택해주세요.")}
+          onSpeak={onSpeak}
         />
       )}
 
       {step === "results" && (
         <HospitalResultsPanel
-          hospitals={nearbyHospitals}
+          hospitals={displayHospitals}
+          isLoading={isLoading}
           symptom={selectedSymptom}
           department={recommendedDepartment}
           onSelectHospital={onSelectHospital}
           onSpeak={() =>
-            onSpeak(`${selectedSymptom ?? "입력한 증상"}에는 ${recommendedDepartment}를 추천합니다. 가까운 병원을 거리순으로 보여드릴게요.`)
+            onSpeak(
+              `${selectedSymptom ?? "입력한 증상"}에는 ${recommendedDepartment}를 추천합니다. 계단이 없는 평지 경로 위주로 가장 가기 편한 병원을 첫 번째로 보여드려요.`
+            )
           }
         />
       )}
 
       {step === "select" && (
-        <HospitalSelectPanel
-          hospital={hospital}
-          onStepChange={onStepChange}
-          onSpeak={onSpeak}
-        />
+        <HospitalSelectPanel hospital={hospital} onStepChange={onStepChange} onSpeak={onSpeak} />
       )}
 
       {step === "route" && (
-        <RouteGuidePanel
-          hospital={hospital}
-          onArrive={() => onStepChange("arrived")}
-          onSpeak={() =>
-            onSpeak(`${hospital.name}까지 안내 중입니다. 200미터 직진하세요. 남은 거리는 520미터, 약 8분입니다.`)
-          }
-        />
+        <NavigationMap hospital={hospital} onArrive={() => onStepChange("arrived")} onSpeak={onSpeak} />
       )}
 
       {step === "arrived" && (
@@ -135,33 +141,158 @@ function HospitalFlowScreen({
   );
 }
 
+// ─── 증상 입력 패널 ────────────────────────────────────────────────────────────
 function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
+  const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening" | "confirm"
+  const [transcript, setTranscript] = useState("");
+  const [liveText, setLiveText] = useState("");
+  const recognitionRef = useRef(null);
+
+  const keyword = extractKeyword(transcript);
+  const confirmMsg = keyword
+    ? `${keyword} 통증에 맞는 병원을 찾아드릴까요?`
+    : `"${transcript}" 증상으로 병원을 찾아드릴까요?`;
+
+  const startVoice = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      onSpeak("이 브라우저는 음성 인식을 지원하지 않아요. 아래 버튼으로 선택해 주세요.");
+      return;
+    }
+    if (recognitionRef.current) {
+      recognitionRef.current.abort();
+      recognitionRef.current = null;
+    }
+
+    const rec = new SR();
+    rec.lang = "ko-KR";
+    rec.continuous = false;
+    rec.interimResults = true;
+    recognitionRef.current = rec;
+
+    setVoicePhase("listening");
+    setLiveText("");
+    setTranscript("");
+
+    rec.onresult = (e) => {
+      const r = e.results[e.results.length - 1];
+      const text = r[0].transcript;
+      setLiveText(text);
+      if (r.isFinal) {
+        setTranscript(text);
+        setLiveText("");
+        setVoicePhase("confirm");
+        recognitionRef.current = null;
+      }
+    };
+    rec.onerror = () => {
+      setVoicePhase("idle");
+      setLiveText("");
+      recognitionRef.current = null;
+      onSpeak("음성을 인식하지 못했어요. 다시 말해 주세요.");
+    };
+    rec.onend = () => {
+      setVoicePhase((p) => (p === "listening" ? "idle" : p));
+      recognitionRef.current = null;
+    };
+    rec.start();
+  }, [onSpeak]);
+
+  const handleConfirm = () => onSelect(transcript);
+  const handleRetry = () => {
+    setVoicePhase("idle");
+    setTranscript("");
+    setLiveText("");
+  };
+
+  // ── 확인 화면 ──
+  if (voicePhase === "confirm") {
+    return (
+      <div className="mx-auto max-w-[560px] rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:max-w-[720px] lg:px-6 lg:py-6">
+        <p className="mb-3 text-xl font-black text-boyak-muted lg:text-lg">제가 들은 내용</p>
+        <div className="mb-7 rounded-2xl bg-[#F0F7FF] px-6 py-5 text-3xl font-black text-boyak-blue lg:mb-5 lg:text-2xl">
+          "{transcript}"
+        </div>
+        <p className="mb-8 text-3xl font-black leading-relaxed sm:text-4xl lg:mb-5 lg:text-2xl">
+          {confirmMsg}
+        </p>
+        <div className="grid grid-cols-2 gap-4 lg:gap-3">
+          <button
+            className="min-h-[96px] rounded-2xl border-2 border-[#30343B] bg-white text-3xl font-black transition active:scale-[0.98] lg:min-h-14 lg:text-xl"
+            type="button"
+            onClick={handleRetry}
+          >
+            아니오
+          </button>
+          <button
+            className="min-h-[96px] rounded-2xl bg-boyak-green text-3xl font-black text-white transition active:scale-[0.98] lg:min-h-14 lg:text-xl"
+            type="button"
+            onClick={handleConfirm}
+          >
+            네, 찾아주세요
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 기본 입력 화면 ──
   return (
     <div className="mx-auto max-w-[560px] rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:max-w-[720px] lg:px-6 lg:py-5">
-      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-4">
-        <h2 className="text-center text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
-          어디가 아프세요?
-          <br />
-          말하거나 선택해주세요
+      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-5">
+        <h2 className="text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
+          어디가 불편하신가요?
         </h2>
         <button
           className="grid size-16 shrink-0 place-items-center rounded-full text-boyak-ink lg:size-11"
           type="button"
-          aria-label="증상 선택 안내 듣기"
-          onClick={onSpeak}
+          aria-label="안내 듣기"
+          onClick={() => onSpeak("어디가 불편하신가요? 말하기 버튼을 누르고 자유롭게 말씀해 주세요.")}
         >
           <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
         </button>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-5 sm:gap-7 lg:mb-4 lg:gap-3" aria-label="증상 선택지">
+      {/* 큰 말하기 버튼 */}
+      <button
+        className={`mb-6 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] lg:mb-4 lg:min-h-20 lg:gap-2 lg:text-xl ${
+          voicePhase === "listening"
+            ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
+            : "border-[#30343B] bg-white"
+        }`}
+        type="button"
+        onClick={startVoice}
+        disabled={voicePhase === "listening"}
+      >
+        <Mic
+          className={`size-14 lg:size-8 ${voicePhase === "listening" ? "animate-pulse text-boyak-green" : "text-boyak-muted"}`}
+          strokeWidth={2.4}
+          aria-hidden="true"
+        />
+        {voicePhase === "listening" ? "듣는 중..." : "말하기"}
+        {liveText && (
+          <span className="mt-1 text-xl font-bold text-boyak-green lg:text-base">"{liveText}"</span>
+        )}
+      </button>
+
+      {/* 구분선 */}
+      <div className="mb-5 flex items-center gap-3 lg:mb-3">
+        <div className="h-px flex-1 bg-boyak-line" />
+        <span className="text-base font-bold text-boyak-muted">또는 바로 선택</span>
+        <div className="h-px flex-1 bg-boyak-line" />
+      </div>
+
+      {/* 빠른 선택 버튼 */}
+      <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-3" aria-label="증상 빠른 선택">
         {symptomOptions.map((symptom) => {
           const isSelected = selectedSymptom === symptom;
           return (
             <button
               key={symptom}
-              className={`min-h-32 rounded-2xl border-2 px-4 text-3xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-36 sm:text-4xl lg:min-h-20 lg:text-2xl ${
-                isSelected ? "border-boyak-green bg-[#EDF9F1] text-boyak-green" : "border-[#30343B] bg-white text-boyak-ink"
+              className={`min-h-24 rounded-2xl border-2 px-4 text-2xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-28 sm:text-3xl lg:min-h-16 lg:text-xl ${
+                isSelected
+                  ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
+                  : "border-[#30343B] bg-white text-boyak-ink"
               }`}
               type="button"
               aria-pressed={isSelected}
@@ -172,26 +303,12 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
           );
         })}
       </div>
-
-      <button
-        className="mb-5 inline-flex min-h-[112px] w-full items-center justify-center gap-5 rounded-2xl border-2 border-[#30343B] bg-white px-8 text-3xl font-black active:scale-[0.99] lg:mb-3 lg:min-h-14 lg:text-xl"
-        type="button"
-        onClick={onSpeak}
-      >
-        <Mic className="size-14 text-boyak-muted lg:size-8" strokeWidth={2.4} aria-hidden="true" />
-        말하기
-      </button>
-
-      {selectedSymptom && (
-        <div className="rounded-xl bg-[#EDF9F1] p-5 text-center text-xl font-extrabold leading-relaxed text-boyak-green lg:p-3 lg:text-lg">
-          {selectedSymptom} 통증에 맞는 병원을 찾는 중이에요.
-        </div>
-      )}
     </div>
   );
 }
 
-function HospitalResultsPanel({ hospitals, symptom, department, onSelectHospital, onSpeak }) {
+// ─── 병원 결과 패널 ────────────────────────────────────────────────────────────
+function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSelectHospital, onSpeak }) {
   return (
     <div className="mx-auto max-w-[720px] rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:max-w-none lg:px-5 lg:py-5">
       <div className="mb-8 flex items-start justify-between gap-4 lg:mb-4 lg:gap-3">
@@ -200,10 +317,12 @@ function HospitalResultsPanel({ hospitals, symptom, department, onSelectHospital
             {symptom ? `${symptom} 증상 분석 결과` : "AI 증상 분석 결과"}
           </p>
           <h2 className="text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
-            {department}를 추천해요
+            {isLoading ? "분석 중..." : `${department}를 추천해요`}
           </h2>
           <p className="mt-3 text-xl font-bold leading-relaxed text-boyak-muted lg:mt-1 lg:text-lg">
-            가까운 병원을 거리순으로 보여드릴게요.
+            {isLoading
+              ? "계단·경사를 확인하며 가장 편한 경로 순으로 정렬하고 있어요."
+              : "계단이 적고 거리 짧은 순으로 정렬했어요."}
           </p>
         </div>
         <button
@@ -218,16 +337,36 @@ function HospitalResultsPanel({ hospitals, symptom, department, onSelectHospital
 
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-3">
         {hospitals.map((h, index) => (
-          <article key={h.name} className="rounded-3xl border-2 border-[#30343B] bg-white p-6 lg:p-4">
+          <article
+            key={h.name}
+            className={`rounded-3xl border-2 bg-white p-6 lg:p-4 ${
+              h.recommendedForWalking ? "border-boyak-green" : "border-[#30343B]"
+            }`}
+          >
             <div className="mb-5 flex items-start justify-between gap-4 lg:mb-3 lg:gap-3">
               <div>
-                <p className="mb-2 text-lg font-black text-boyak-green lg:mb-1 lg:text-base">거리순 {index + 1}번째</p>
+                {h.recommendedForWalking ? (
+                  <p className="mb-2 inline-flex items-center gap-1 rounded-lg bg-boyak-green px-3 py-1 text-base font-black text-white lg:mb-1 lg:text-sm">
+                    <Star className="size-4" fill="currentColor" aria-hidden="true" />
+                    보행자 맞춤 추천
+                  </p>
+                ) : (
+                  <p className="mb-2 text-lg font-black text-boyak-muted lg:mb-1 lg:text-base">
+                    도보 거리순 {index + 1}위
+                  </p>
+                )}
                 <h3 className="text-3xl font-black leading-tight lg:text-2xl">
                   {h.name}
                   <span className="mt-2 block text-xl text-boyak-muted lg:text-base">{h.department}</span>
                 </h3>
               </div>
-              <span className="rounded-xl bg-[#EDF9F1] px-4 py-2 text-lg font-black text-boyak-green lg:px-3 lg:py-2 lg:text-sm">
+              <span
+                className={`shrink-0 rounded-xl px-4 py-2 text-lg font-black lg:px-3 lg:py-2 lg:text-sm ${
+                  h.recommendedForWalking
+                    ? "bg-[#EDF9F1] text-boyak-green"
+                    : "bg-[#F5F5F5] text-boyak-muted"
+                }`}
+              >
                 {h.status}
               </span>
             </div>
@@ -239,10 +378,17 @@ function HospitalResultsPanel({ hospitals, symptom, department, onSelectHospital
               <p className="inline-flex items-center gap-3">
                 <MapPin className="size-7 text-boyak-muted lg:size-5" aria-hidden="true" />
                 {h.route}
+                {h.stairs !== undefined && (
+                  <span className={`ml-1 text-lg lg:text-sm ${h.isFlat ? "text-boyak-green" : "text-boyak-muted"}`}>
+                    {h.isFlat ? "· 계단 없음" : `· 계단 ${h.stairs}개`}
+                  </span>
+                )}
               </p>
             </div>
             <button
-              className="min-h-20 w-full rounded-2xl bg-boyak-green px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg"
+              className={`min-h-20 w-full rounded-2xl px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg ${
+                h.recommendedForWalking ? "bg-boyak-green" : "bg-[#5B616B]"
+              }`}
               type="button"
               onClick={() => onSelectHospital(index)}
             >
@@ -250,27 +396,23 @@ function HospitalResultsPanel({ hospitals, symptom, department, onSelectHospital
             </button>
           </article>
         ))}
-
-        <button
-          className="inline-flex min-h-[96px] items-center justify-center gap-5 rounded-2xl border-2 border-[#30343B] bg-white px-8 text-3xl font-black lg:col-span-3 lg:min-h-14 lg:text-xl"
-          type="button"
-          onClick={onSpeak}
-        >
-          <Mic className="size-12 lg:size-8" strokeWidth={2.4} aria-hidden="true" />
-          말하기
-        </button>
       </div>
     </div>
   );
 }
 
+// ─── 병원 선택 패널 ────────────────────────────────────────────────────────────
 function HospitalSelectPanel({ hospital, onStepChange, onSpeak }) {
   return (
     <div className="mx-auto max-w-[560px] rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:max-w-[720px] lg:px-5 lg:py-5">
       <StepHeader
         icon={<Building2 className="size-12 text-boyak-green" />}
         title="병원을 선택했어요"
-        onSpeak={() => onSpeak(`${hospital.name} 상세 정보입니다. ${hospital.status}이며 ${hospital.route}로 이동할 수 있어요.`)}
+        onSpeak={() =>
+          onSpeak(
+            `${hospital.name} 상세 정보입니다. ${hospital.route}이며 계단 ${hospital.stairs ?? 0}개 경로예요.`
+          )
+        }
       />
       <article className="rounded-3xl border-2 border-[#30343B] bg-white p-7 lg:p-5">
         <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">{hospital.department}</p>
@@ -278,84 +420,25 @@ function HospitalSelectPanel({ hospital, onStepChange, onSpeak }) {
         <p className="text-2xl font-extrabold text-boyak-muted lg:text-lg">
           {hospital.walk} ({hospital.distance}) · {hospital.route}
         </p>
+        {hospital.stairs !== undefined && (
+          <p className={`mt-3 text-xl font-bold lg:text-base ${hospital.isFlat ? "text-boyak-green" : "text-boyak-muted"}`}>
+            {hospital.isFlat ? "✓ 계단 없는 평지 경로" : `계단 ${hospital.stairs}개 포함`}
+          </p>
+        )}
         <p className="mt-4 inline-flex rounded-xl bg-[#EDF9F1] px-5 py-3 text-xl font-black text-boyak-green lg:mt-3 lg:px-4 lg:py-2 lg:text-base">
           {hospital.status}
         </p>
       </article>
-      <a
-        className="mt-6 flex min-h-[96px] w-full items-center justify-center rounded-2xl bg-boyak-green px-7 text-center text-3xl font-black text-white lg:mt-4 lg:min-h-14 lg:text-xl"
-        href={hospital.mapUrl || `https://map.kakao.com/link/search/${encodeURIComponent(hospital.name)}`}
-        target="_blank"
-        rel="noreferrer"
-        onClick={() => onSpeak(`${hospital.name} 길찾기를 카카오맵에서 엽니다.`)}
+      <button
+        className="mt-6 min-h-[96px] w-full rounded-2xl bg-boyak-green px-7 text-3xl font-black text-white lg:mt-4 lg:min-h-14 lg:text-xl"
+        type="button"
+        onClick={() => {
+          onStepChange("route");
+          onSpeak(`${hospital.name}까지 길안내를 시작합니다.`);
+        }}
       >
-        카카오맵으로 길찾기
-      </a>
-    </div>
-  );
-}
-
-function RouteGuidePanel({ hospital, onArrive, onSpeak }) {
-  return (
-    <div className="mx-auto max-w-[560px] overflow-hidden rounded-[30px] border-2 border-boyak-line bg-white shadow-soft lg:max-w-[760px]">
-      <div className="flex items-start justify-between gap-4 px-7 py-8 sm:px-9 lg:px-5 lg:py-4">
-        <h2 className="text-center text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
-          안내를 시작합니다
-        </h2>
-        <button
-          className="grid size-16 shrink-0 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="경로 안내 음성으로 듣기"
-          onClick={onSpeak}
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className="relative h-[360px] bg-[#EFF1F4] lg:h-[190px]">
-        <div className="absolute inset-0 opacity-80 [background-image:linear-gradient(90deg,rgba(255,255,255,.9)_2px,transparent_2px),linear-gradient(rgba(255,255,255,.9)_2px,transparent_2px)] [background-size:72px_72px]" />
-        <div className="absolute left-[22%] top-[62%] size-12 rounded-full border-[7px] border-[#424850] bg-white" />
-        <div className="absolute right-[16%] top-[22%] grid size-14 place-items-center rounded-full bg-[#424850] text-white">
-          <MapPin className="size-10" fill="currentColor" aria-hidden="true" />
-        </div>
-        <div className="absolute left-[28%] top-[47%] h-9 w-[28%] rounded-l-full border-b-[14px] border-l-[14px] border-[#5B616B]" />
-        <div className="absolute left-[50%] top-[29%] h-[92px] w-9 border-r-[14px] border-[#5B616B]" />
-        <div className="absolute left-[56%] top-[29%] h-9 w-[28%] rounded-r-full border-r-[14px] border-t-[14px] border-[#5B616B]" />
-      </div>
-
-      <div className="m-7 rounded-3xl border-2 border-boyak-line bg-white p-7 lg:m-4 lg:p-4">
-        <p className="mb-7 inline-flex items-center gap-5 text-3xl font-black lg:mb-3 lg:gap-3 lg:text-xl">
-          <ArrowUp className="size-16 lg:size-10" strokeWidth={2.8} aria-hidden="true" />
-          200m 직진하세요
-        </p>
-        <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-boyak-line pt-5 text-xl font-extrabold text-boyak-muted lg:pt-3 lg:text-base">
-          <span>남은 거리 520m</span>
-          <span aria-hidden="true">|</span>
-          <span className="inline-flex items-center gap-2">
-            <Clock className="size-6 lg:size-5" aria-hidden="true" />약 8분
-          </span>
-        </div>
-        <p className="mt-4 text-lg font-bold text-boyak-muted lg:mt-2 lg:text-base">목적지: {hospital.name}</p>
-      </div>
-
-      <div className="grid gap-4 px-7 pb-7 lg:grid-cols-2 lg:gap-3 lg:px-4 lg:pb-4">
-        <button
-          className="inline-flex min-h-[96px] w-full items-center justify-center gap-5 rounded-2xl bg-boyak-green px-8 text-3xl font-black text-white lg:min-h-14 lg:text-xl"
-          type="button"
-          onClick={onSpeak}
-        >
-          <Mic className="size-12 lg:size-8" strokeWidth={2.4} aria-hidden="true" />
-          말하기
-        </button>
-        <button
-          className="inline-flex min-h-[86px] w-full items-center justify-center gap-4 rounded-2xl border-2 border-[#30343B] bg-white px-8 text-2xl font-black lg:min-h-14 lg:text-xl"
-          type="button"
-          onClick={onArrive}
-        >
-          <CheckCircle className="size-9 text-boyak-green lg:size-7" aria-hidden="true" />
-          도착했어요
-        </button>
-      </div>
+        길안내 시작
+      </button>
     </div>
   );
 }

@@ -1,16 +1,10 @@
-"use client";
-
-import { memo } from "react";
-
-function StepLabel({ number, title }) {
+export default function StepLabel({ number, title }) {
   return (
-    <p className="mb-5 inline-flex items-center gap-3 text-xl font-black lg:mb-3 lg:text-base">
-      <span className="grid size-9 place-items-center rounded-full bg-boyak-orange text-white lg:size-7 lg:text-sm">
+    <div className="flex items-center gap-2">
+      <span className="grid size-8 place-items-center rounded-full bg-boyak-line text-sm font-black text-boyak-ink lg:size-6 lg:text-xs">
         {number}
       </span>
-      {title}
-    </p>
+      <span className="text-base font-black text-boyak-muted lg:text-sm">{title}</span>
+    </div>
   );
 }
-
-export default memo(StepLabel);

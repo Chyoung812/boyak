@@ -37,12 +37,14 @@ function MedicineFlowScreen({
   isOcrLoading,
   hasHerbalMedicine,
   userAge,
+  selectedHomeMedicines = [],
   cameraInputRef,
   galleryInputRef,
   onImageChange,
   onAnalyzePhotos,
   onResetPhotos,
   onSelectCandidate,
+  onToggleHomeMedicine,
   onRunSafetyCheck,
   onBack,
   onStepChange,
@@ -142,7 +144,7 @@ function MedicineFlowScreen({
       )}
 
       {step === "review" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
+        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5 overflow-y-auto">
           <StepHeader
             icon={<ListChecks className="size-12 text-boyak-blue" />}
             title="추출된 내용을 확인해주세요"
@@ -229,20 +231,37 @@ function MedicineFlowScreen({
           <StepHeader
             icon={<Plus className="size-12 text-boyak-blue" />}
             title="집에 있는 다른 약도 추가할까요?"
-            onSpeak={() => onSpeak("집에 있는 감기약, 소화제, 영양제도 함께 확인하면 더 안전해요.")}
+            onSpeak={() => onSpeak("감기약, 소화제, 영양제도 함께 확인하면 더 안전해요.")}
           />
+          {selectedHomeMedicines.length > 0 && (
+            <p className="mb-4 rounded-xl bg-[#EDF4FF] px-4 py-3 text-lg font-black text-boyak-blue lg:text-base">
+              추가됨: {selectedHomeMedicines.join(", ")}
+            </p>
+          )}
           <div className="grid gap-4 md:grid-cols-3 lg:gap-3">
-            {homeMedicines.map((medicine) => (
-              <button
-                key={medicine}
-                className="min-h-28 rounded-2xl border-2 border-[#30343B] bg-white px-5 text-3xl font-black lg:min-h-20 lg:text-2xl"
-                type="button"
-              >
-                {medicine}
-              </button>
-            ))}
+            {homeMedicines.map((medicine) => {
+              const isSelected = selectedHomeMedicines.includes(medicine);
+              return (
+                <button
+                  key={medicine}
+                  className={`min-h-28 rounded-2xl border-2 px-5 text-3xl font-black transition lg:min-h-20 lg:text-2xl ${
+                    isSelected
+                      ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
+                      : "border-[#30343B] bg-white text-boyak-ink"
+                  }`}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => onToggleHomeMedicine?.(medicine)}
+                >
+                  {isSelected ? "✓ " : ""}{medicine}
+                </button>
+              );
+            })}
           </div>
-          <NextAction label="한약 복용 여부 확인" onClick={() => onStepChange("herbal")} />
+          <NextAction
+            label={selectedHomeMedicines.length > 0 ? `${selectedHomeMedicines.length}개 추가 후 계속` : "추가 없이 계속"}
+            onClick={() => onStepChange("herbal")}
+          />
         </div>
       )}
 
