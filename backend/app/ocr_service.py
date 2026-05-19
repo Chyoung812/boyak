@@ -40,7 +40,7 @@ async def _ocr_with_openai(
                 "https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {settings.openai_api_key}"},
                 json={
-                    "model": "gpt-4o-mini",
+                    "model": settings.openai_model,
                     "messages": [
                         {
                             "role": "user",
@@ -67,10 +67,15 @@ async def _ocr_with_openai(
                 },
             )
         content = resp.json()["choices"][0]["message"]["content"].strip()
+        print("OCR API Response Content:", content)
         import json, re
         match = re.search(r"\[.*?\]", content, re.DOTALL)
         if match:
             return json.loads(match.group())
-    except Exception:
-        pass
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if 'resp' in locals():
+            print("Response status:", resp.status_code)
+            print("Response body:", resp.text)
     return []
