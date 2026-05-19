@@ -55,7 +55,10 @@ async def _ocr_with_openai(
                                 },
                                 {
                                     "type": "image_url",
-                                    "image_url": {"url": f"data:{content_type};base64,{b64}"},
+                                    "image_url": {
+                                        "url": f"data:{content_type};base64,{b64}",
+                                        "detail": "high"
+                                    },
                                 },
                             ],
                         }
