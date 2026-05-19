@@ -55,13 +55,23 @@ contraindication_pairs
 
 ## Docker
 
+Repo root에서 빌드하는 방식이 기본입니다.
+
+```bash
+cd /home/kyung/workspace/hw/academy/boyak
+docker build -t boyak-backend .
+docker run --rm -p 8001:8000 --env-file backend/.env boyak-backend
+```
+
+backend 폴더만 컨텍스트로 빌드할 때도 동작합니다.
+
 ```bash
 cd backend
 docker build -t boyak-backend .
 docker run --rm -p 8001:8000 --env-file .env boyak-backend
 ```
 
-Render Docker 배포 시 `DATABASE_URL`, `OPENAI_API_KEY`, `PUBLIC_DATA_SERVICE_KEY`, `FOODSAFETY_API_KEY`, `CORS_ORIGINS`를 환경변수로 등록합니다.
+Render Docker 배포 시 repo root의 `Dockerfile`을 사용하고, `DATABASE_URL`, `OPENAI_API_KEY`, `PUBLIC_DATA_SERVICE_KEY`, `FOODSAFETY_API_KEY`, `CORS_ORIGINS`를 환경변수로 등록합니다.
 
 ## 데이터 연결 우선순위
 

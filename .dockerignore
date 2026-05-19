@@ -1,0 +1,35 @@
+# Python/local
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.venv/
+**/venv/
+
+# Node/frontend build artifacts
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+node_modules/
+.next/
+
+# secrets/env
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend/.env.local
+!backend/.env.example
+
+# large/generated data - use DATABASE_URL in deployment
+backend/data/raw/
+backend/data/cache/
+backend/data/processed/
+**/*.sqlite3
+**/*.sqlite3.gz
+
+# git/editor
+.git/
+.github/
+.vscode/
+.idea/
+.DS_Store
