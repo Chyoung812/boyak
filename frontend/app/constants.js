@@ -31,21 +31,15 @@ export const hospitalFlowSteps = [
 
 export const medicineSteps = [
   "약 촬영",
-  "OCR 분석",
-  "후보 확인",
   "다른 약 추가",
-  "한약 여부",
-  "DUR 분석",
+  "나이 / 한약",
   "결과 확인",
 ];
 
 export const medicineStepKeys = [
   "capture",
-  "ocr",
-  "review",
   "add",
   "herbal",
-  "dur",
   "result",
 ];
 
@@ -67,6 +61,12 @@ export const nearbyHospitals = [
     route: "평지 위주 경로",
     status: "지금 진료 중",
     mapUrl: "https://map.kakao.com/link/search/%ED%8A%BC%ED%8A%BC%EC%A0%95%ED%98%95%EC%99%B8%EA%B3%BC",
+    lat: 37.5679,
+    lon: 126.9827,
+    stairs: 0,
+    isFlat: true,
+    recommendedForWalking: true,
+    floor: "2층",
   },
   {
     name: "우리마을의원",
@@ -76,6 +76,12 @@ export const nearbyHospitals = [
     route: "횡단보도 적은 경로",
     status: "진료 가능",
     mapUrl: "https://map.kakao.com/link/search/%EC%9A%B0%EB%A6%AC%EB%A7%88%EC%9D%84%EC%9D%98%EC%9B%90",
+    lat: 37.5665,
+    lon: 126.9780,
+    stairs: 3,
+    isFlat: false,
+    recommendedForWalking: false,
+    floor: "1층",
   },
   {
     name: "서울연세통증의학과",
@@ -85,6 +91,12 @@ export const nearbyHospitals = [
     route: "엘리베이터 출입 가능",
     status: "대기 적음",
     mapUrl: "https://map.kakao.com/link/search/%EC%84%9C%EC%9A%B8%EC%97%B0%EC%84%B8%ED%86%B5%EC%A6%9D%EC%9D%98%ED%95%99%EA%B3%BC",
+    lat: 37.5650,
+    lon: 126.9850,
+    stairs: 0,
+    isFlat: true,
+    recommendedForWalking: false,
+    floor: "3층",
   },
 ];
 

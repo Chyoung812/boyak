@@ -1,14 +1,13 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useState } from "react";
 import {
-  AlertTriangle,
   Camera,
+  ChevronDown,
+  ChevronUp,
   FileText,
-  Hospital,
   ImagePlus,
   Leaf,
-  ListChecks,
   Loader2,
   Pill,
   Plus,
@@ -52,7 +51,8 @@ function MedicineFlowScreen({
   onAgeChange,
   onSpeak,
 }) {
-  const currentIndex = medicineStepKeys.indexOf(step);
+  const visibleStepMap = { capture: 0, ocr: 0, review: 0, add: 1, herbal: 2, dur: 3, result: 3 };
+  const currentIndex = visibleStepMap[step] ?? 0;
   const currentStepLabel = medicineSteps[currentIndex] ?? medicineSteps[0];
   const ocrMedicines = (ocrResult?.medicine_bags || []).flatMap((bag, bagIndex) =>
     (bag.medicine_names || []).map((name, medicineIndex) => ({
@@ -143,89 +143,6 @@ function MedicineFlowScreen({
         />
       )}
 
-      {step === "review" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5 overflow-y-auto">
-          <StepHeader
-            icon={<ListChecks className="size-12 text-boyak-blue" />}
-            title="추출된 내용을 확인해주세요"
-            onSpeak={() => onSpeak("인식된 약 이름과 조제일자를 확인해주세요. 틀린 내용은 수정할 수 있어요.")}
-          />
-          {ocrError && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
-              OCR 분석 실패: {ocrError}
-            </div>
-          )}
-          {!ocrError && !ocrMedicines.length && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5D08A] bg-[#FFF8E8] p-5 text-xl font-black text-[#8A5A00] lg:text-base">
-              아직 추출된 약 이름이 없어요. 사진을 다시 찍거나 OCR 키 설정을 확인해주세요.
-            </div>
-          )}
-          {normalizeError && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
-              약 후보 확인 실패: {normalizeError}
-            </div>
-          )}
-          <div className="grid gap-4">
-            {normalizeItems.map((item, index) => {
-              const candidates = item.candidates || [];
-              return (
-                <div key={`${item.input}-${index}`} className="rounded-2xl border-2 border-boyak-line bg-boyak-field p-5 lg:p-4">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-lg font-black text-boyak-muted lg:text-base">인식된 약 이름</p>
-                      <p className="text-2xl font-black text-boyak-ink lg:text-xl">{item.input}</p>
-                    </div>
-                    <span className={`rounded-full px-3 py-1 text-sm font-black ${item.status === "matched" ? "bg-[#EDF9F1] text-boyak-green" : "bg-[#FFF8E8] text-[#8A5A00]"}`}>
-                      {item.status === "matched" ? "일치" : item.status === "needs_confirmation" ? "확인 필요" : "못 찾음"}
-                    </span>
-                  </div>
-                  {candidates.length ? (() => {
-                    const ingredientCodes = Array.from(new Set(candidates.map((candidate) => candidate.ingredient_code).filter(Boolean)));
-                    if (ingredientCodes.length <= 1) {
-                      const selected = selectedCandidates?.[index] || candidates[0];
-                      return (
-                        <div className="rounded-xl border-2 border-boyak-blue bg-[#EDF4FF] p-4">
-                          <p className="text-lg font-black text-boyak-ink lg:text-base">
-                            {selected?.alias || candidates[0]?.alias}
-                          </p>
-                          <p className="mt-1 text-base font-bold text-boyak-blue">
-                            같은 성분 약으로 확인돼 자동 선택했어요.
-                          </p>
-                          <p className="mt-1 text-sm text-boyak-muted">성분코드 {ingredientCodes[0] || "확인필요"}</p>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {candidates.slice(0, 4).map((candidate) => {
-                          const selected = selectedCandidates?.[index]?.product_code === candidate.product_code && selectedCandidates?.[index]?.ingredient_code === candidate.ingredient_code;
-                          return (
-                            <button
-                              key={`${candidate.product_code}-${candidate.ingredient_code}-${candidate.alias}`}
-                              className={`rounded-xl border-2 p-4 text-left font-bold ${selected ? "border-boyak-blue bg-[#EDF4FF]" : "border-boyak-line bg-white"}`}
-                              type="button"
-                              onClick={() => onSelectCandidate(index, candidate)}
-                            >
-                              <p className="text-lg font-black text-boyak-ink lg:text-base">{candidate.alias}</p>
-                              <p className="mt-1 text-sm text-boyak-muted">성분코드 {candidate.ingredient_code || "확인필요"}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })() : (
-                    <p className="rounded-xl border border-[#F5D08A] bg-white p-4 text-lg font-bold text-[#8A5A00]">
-                      후보를 못 찾았어요. 약봉투 전체가 보이게 다시 찍거나 약 이름을 더 정확히 입력해주세요.
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <NextAction label="선택한 후보로 계속" onClick={() => onStepChange("add")} />
-        </div>
-      )}
-
       {step === "add" && (
         <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
           <StepHeader
@@ -233,6 +150,14 @@ function MedicineFlowScreen({
             title="집에 있는 다른 약도 추가할까요?"
             onSpeak={() => onSpeak("감기약, 소화제, 영양제도 함께 확인하면 더 안전해요.")}
           />
+          {normalizeItems.length > 0 && (
+            <div className="mb-5 rounded-2xl bg-[#EDF4FF] px-5 py-4">
+              <p className="text-lg font-black text-boyak-muted lg:text-base">인식된 약</p>
+              <p className="mt-1 text-2xl font-black text-boyak-ink lg:text-xl">
+                {normalizeItems.map((item) => item.top_candidate?.alias || item.input).filter(Boolean).join("  ·  ")}
+              </p>
+            </div>
+          )}
           {selectedHomeMedicines.length > 0 && (
             <p className="mb-4 rounded-xl bg-[#EDF4FF] px-4 py-3 text-lg font-black text-boyak-blue lg:text-base">
               추가됨: {selectedHomeMedicines.join(", ")}
@@ -324,69 +249,13 @@ function MedicineFlowScreen({
       )}
 
       {step === "result" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
-          <StepHeader
-            icon={<AlertTriangle className="size-12 text-boyak-red" />}
-            title="결과를 확인해주세요"
-            onSpeak={() =>
-              onSpeak(safetyResult?.tts_text || safetyResult?.message || "DUR 분석 결과를 확인해주세요. 주의 문구가 있으면 약사나 의사에게 확인하세요.")
-            }
-          />
-          {safetyError && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
-              DUR 분석 실패: {safetyError}
-            </div>
-          )}
-          <div className="grid gap-5 lg:grid-cols-2 lg:gap-3">
-            <div className={`rounded-2xl border-2 p-6 lg:p-5 ${safetyResult?.level === "위험" ? "border-[#FFC5C5] bg-[#FFF0F0]" : safetyResult?.level === "주의" ? "border-[#F5D08A] bg-[#FFF8E8]" : "border-[#BFE5CB] bg-[#EDF9F1]"}`}>
-              <p className="mb-3 text-xl font-black text-boyak-red lg:mb-2 lg:text-lg">{safetyResult?.level || "확인필요"}</p>
-              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">{safetyResult?.message || "분석 결과를 확인하세요"}</h2>
-              <p className="text-xl font-bold leading-relaxed text-boyak-muted lg:text-lg">
-                {safetyResult?.action || "공공 DUR 데이터 기반 확인 보조 결과입니다. 약사나 의사에게 최종 확인하세요."}
-              </p>
-            </div>
-            <div className="rounded-2xl border-2 border-[#BFE5CB] bg-[#EDF9F1] p-6 lg:p-5">
-              <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">근거</p>
-              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">DUR 공공데이터</h2>
-              <p className="text-xl font-bold leading-relaxed text-boyak-muted lg:text-lg">
-                노인주의, 연령금기, 병용금기 데이터 기준으로 확인했어요. 진단이나 처방은 아닙니다.
-              </p>
-            </div>
-          </div>
-          {!!safetyResult?.matches?.length && (
-            <div className="mt-5 rounded-2xl border-2 border-boyak-line bg-white p-5">
-              <p className="mb-3 text-xl font-black text-boyak-ink">확인된 항목</p>
-              <div className="grid gap-3">
-                {safetyResult.matches.slice(0, 5).map((match, index) => (
-                  <div key={`${match.category}-${index}`} className="rounded-xl bg-boyak-field p-4">
-                    <p className="text-lg font-black text-boyak-red">{match.category}</p>
-                    <p className="mt-1 text-base font-bold text-boyak-muted">{match.medicine_name || match.ingredient}</p>
-                    <p className="mt-1 text-base text-boyak-muted">{match.reason}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:mt-4 lg:gap-3">
-            <button
-              className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl bg-boyak-red px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg"
-              type="button"
-            >
-              <Hospital className="size-8 lg:size-6" aria-hidden="true" />
-              의사 상담 권장
-            </button>
-            <button
-              className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl border-2 border-boyak-line bg-white px-6 text-2xl font-black lg:min-h-14 lg:text-lg"
-              type="button"
-              onClick={() =>
-                onSpeak(safetyResult?.tts_text || safetyResult?.message || "DUR 분석 결과를 확인해주세요.")
-              }
-            >
-              <Volume2 className="size-8 text-boyak-blue lg:size-6" aria-hidden="true" />
-              결과 음성 안내
-            </button>
-          </div>
-        </div>
+        <ResultStep
+          safetyResult={safetyResult}
+          safetyError={safetyError}
+          normalizeItems={normalizeItems}
+          onSpeak={onSpeak}
+          onRestart={() => onStepChange("capture")}
+        />
       )}
     </section>
   );
@@ -491,6 +360,106 @@ function CaptureStep({
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ResultStep({ safetyResult, safetyError, normalizeItems, onSpeak, onRestart }) {
+  const [showDetails, setShowDetails] = useState(false);
+
+  const level = safetyResult?.level || "확인필요";
+  const levelConfig = {
+    "안전":    { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", textColor: "text-boyak-green",   icon: "✅", label: "괜찮아요" },
+    "주의":    { bg: "bg-[#FFF8E8]", border: "border-[#F5D08A]", textColor: "text-[#8A5A00]",     icon: "⚠️", label: "주의가 필요해요" },
+    "위험":    { bg: "bg-[#FFF0F0]", border: "border-[#FFC5C5]", textColor: "text-boyak-red",     icon: "❌", label: "위험해요" },
+    "확인필요": { bg: "bg-[#EDF4FF]", border: "border-[#C8DAF7]", textColor: "text-boyak-blue",   icon: "❓", label: "확인이 필요해요" },
+  };
+  const cfg = levelConfig[level] || levelConfig["확인필요"];
+
+  const recognizedDrugs = (normalizeItems || [])
+    .map((item) => item.top_candidate?.alias || item.input)
+    .filter(Boolean);
+
+  const matches = safetyResult?.matches || [];
+
+  return (
+    <div className="flex flex-col gap-4">
+      {safetyError && (
+        <div className="rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red">
+          분석 실패: {safetyError}
+        </div>
+      )}
+
+      {/* 메인 결과 카드 */}
+      <div className={`rounded-[28px] border-2 ${cfg.border} ${cfg.bg} p-8 text-center`}>
+        <div className="mb-3 text-6xl">{cfg.icon}</div>
+        <p className={`text-4xl font-black ${cfg.textColor} mb-3 lg:text-3xl`}>{cfg.label}</p>
+        <p className="text-2xl font-black leading-snug lg:text-xl">
+          {safetyResult?.message || "분석 결과를 확인하세요"}
+        </p>
+        {safetyResult?.action && (
+          <p className="mt-3 text-xl font-bold text-boyak-muted lg:text-base">{safetyResult.action}</p>
+        )}
+      </div>
+
+      {/* 확인한 약 목록 */}
+      {recognizedDrugs.length > 0 && (
+        <div className="rounded-2xl border-2 border-boyak-line bg-boyak-field px-5 py-4">
+          <p className="text-lg font-black text-boyak-muted lg:text-base">확인한 약</p>
+          <p className="mt-1 text-2xl font-black text-boyak-ink lg:text-xl">
+            {recognizedDrugs.join("  ·  ")}
+          </p>
+        </div>
+      )}
+
+      {/* 자세히 보기 토글 */}
+      {matches.length > 0 && (
+        <>
+          <button
+            className="flex w-full items-center justify-between rounded-2xl border-2 border-boyak-line bg-white px-6 py-4 text-xl font-black lg:text-lg"
+            type="button"
+            onClick={() => setShowDetails((v) => !v)}
+          >
+            <span>자세히 보기</span>
+            {showDetails
+              ? <ChevronUp className="size-6" />
+              : <ChevronDown className="size-6" />
+            }
+          </button>
+          {showDetails && (
+            <div className="rounded-2xl border-2 border-boyak-line bg-white p-5">
+              <div className="grid gap-3">
+                {matches.slice(0, 5).map((match, index) => (
+                  <div key={`${match.category}-${index}`} className="rounded-xl bg-boyak-field p-4">
+                    <p className="text-lg font-black text-boyak-red lg:text-base">{match.category}</p>
+                    <p className="mt-1 text-base font-bold text-boyak-ink">{match.product_name || match.ingredient_name || match.medicine_name}</p>
+                    <p className="mt-1 text-base text-boyak-muted">{match.reason}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 액션 버튼 */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <button
+          className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl border-2 border-boyak-line bg-white px-6 text-2xl font-black lg:min-h-14 lg:text-lg"
+          type="button"
+          onClick={() => onSpeak(safetyResult?.tts_text || safetyResult?.message || "분석 결과를 확인해주세요.")}
+        >
+          <Volume2 className="size-8 text-boyak-blue lg:size-6" aria-hidden="true" />
+          결과 음성 안내
+        </button>
+        <button
+          className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl bg-boyak-blue px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg"
+          type="button"
+          onClick={onRestart}
+        >
+          처음으로
+        </button>
+      </div>
     </div>
   );
 }

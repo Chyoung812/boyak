@@ -119,7 +119,6 @@ export default function Home() {
   const getGlobalVoiceGuide = useCallback(() => {
     if (view === "medicine") {
       if (medicineStep === "capture") return "약 봉투를 촬영해주세요.";
-      if (medicineStep === "review") return "인식된 약 이름을 확인하고 맞는 후보를 선택해주세요.";
       if (medicineStep === "add") return "집에 있는 다른 약을 추가로 선택해주세요.";
       if (medicineStep === "herbal") return "나이를 입력하고 한약 복용 여부를 알려주세요.";
       if (medicineStep === "result") return medicineSafetyResult?.tts_text || medicineSafetyResult?.message || "DUR 분석 결과를 확인하세요.";
@@ -140,7 +139,10 @@ export default function Home() {
   }, [view, medicineStep, costStep, selectedCostBody, selectedTreatment, hospitalStep, hospitals, medicineSafetyResult]);
 
   const handleMedicineBack = useCallback(() => {
-    if (medicineStep === "capture") setView("home");
+    if (medicineStep === "capture" || medicineStep === "ocr") setView("home");
+    else if (medicineStep === "add") setMedicineStep("capture");
+    else if (medicineStep === "herbal") setMedicineStep("add");
+    else if (medicineStep === "dur" || medicineStep === "result") setMedicineStep("herbal");
     else setMedicineStep("capture");
   }, [medicineStep]);
 
@@ -197,8 +199,8 @@ export default function Home() {
 
       setMedicineOcrResult(data);
       setMedicineNormalizeResult(normalizeData);
-      setMedicineStep("review");
-      speak("사진 분석이 끝났어요. 약 후보가 맞는지 확인해주세요.");
+      setMedicineStep("add");
+      speak("분석이 끝났어요. 집에 있는 다른 약이 있으면 추가해주세요.");
     } catch (error) {
       setMedicineOcrError(error.message || "OCR 분석에 실패했어요.");
       setMedicineNormalizeError(error.message || "약 후보 확인에 실패했어요.");
