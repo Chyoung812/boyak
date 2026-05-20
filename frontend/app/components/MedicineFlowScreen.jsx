@@ -13,7 +13,6 @@ import {
   Pill,
   Plus,
   ShieldCheck,
-  Volume2,
 } from "lucide-react";
 
 import { homeMedicines, medicineSteps, medicineStepKeys } from "../constants";
@@ -50,7 +49,6 @@ function MedicineFlowScreen({
   onStepChange,
   onHerbalChange,
   onAgeChange,
-  onSpeak,
 }) {
   const currentIndex = medicineStepKeys.indexOf(step);
   const currentStepLabel = medicineSteps[currentIndex] ?? medicineSteps[0];
@@ -73,18 +71,6 @@ function MedicineFlowScreen({
         <h1 id="medicine-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
           약 복용 안전 확인 흐름
         </h1>
-        <button
-          className="ml-auto grid size-16 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="약 복용 안전 확인 음성 안내 듣기"
-          onClick={() =>
-            onSpeak(
-              "약을 촬영하고, 인식된 내용을 확인한 뒤, 집에 있는 다른 약과 한약 복용 여부를 알려주세요. 그 다음 DUR 분석 결과를 안내합니다."
-            )
-          }
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
       </div>
 
       {/* Mobile step indicator */}
@@ -125,8 +111,6 @@ function MedicineFlowScreen({
           onImageChange={onImageChange}
           onAnalyzePhotos={onAnalyzePhotos}
           onResetPhotos={onResetPhotos}
-          onStepChange={onStepChange}
-          onSpeak={onSpeak}
         />
       )}
 
@@ -137,9 +121,6 @@ function MedicineFlowScreen({
           body={`${photoPreviews?.length || 1}장 사진을 하나의 복용 묶음으로 보고 약 이름, 성분, 조제일자를 추출하고 있어요. 완료되면 자동으로 확인 화면으로 이동합니다.`}
           primaryLabel={isOcrLoading ? "분석 중" : "추출 내용 확인"}
           onPrimary={() => onStepChange("review")}
-          onSpeak={() =>
-            onSpeak("약 이름과 조제일자를 읽고 있어요. 다음 화면에서 인식 결과를 확인하고 수정할 수 있어요.")
-          }
         />
       )}
 
@@ -148,7 +129,6 @@ function MedicineFlowScreen({
           <StepHeader
             icon={<ListChecks className="size-12 text-boyak-blue" />}
             title="추출된 내용을 확인해주세요"
-            onSpeak={() => onSpeak("인식된 약 이름과 조제일자를 확인해주세요. 틀린 내용은 수정할 수 있어요.")}
           />
           {ocrError && (
             <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
@@ -231,7 +211,6 @@ function MedicineFlowScreen({
           <StepHeader
             icon={<Plus className="size-12 text-boyak-blue" />}
             title="집에 있는 다른 약도 추가할까요?"
-            onSpeak={() => onSpeak("감기약, 소화제, 영양제도 함께 확인하면 더 안전해요.")}
           />
           {selectedHomeMedicines.length > 0 && (
             <p className="mb-4 rounded-xl bg-[#EDF4FF] px-4 py-3 text-lg font-black text-boyak-blue lg:text-base">
@@ -270,7 +249,6 @@ function MedicineFlowScreen({
           <StepHeader
             icon={<Leaf className="size-12 text-boyak-green" />}
             title="나이와 한약 복용 여부를 알려주세요"
-            onSpeak={() => onSpeak("나이를 입력하고, 한약을 함께 드시는지 알려주세요. 나이에 따라 주의 약이 달라질 수 있어요.")}
           />
           <label className="mb-5 block rounded-2xl border-2 border-boyak-line bg-boyak-field p-5">
             <span className="text-lg font-black text-boyak-muted lg:text-base">복용하시는 분 나이</span>
@@ -317,9 +295,6 @@ function MedicineFlowScreen({
           body={isSafetyLoading ? "선택한 약 후보의 제품코드/성분코드로 DUR 노인주의, 연령금기, 병용금기를 확인하고 있어요." : "분석이 끝나면 결과 화면으로 자동 이동합니다."}
           primaryLabel={isSafetyLoading ? "분석 중" : "결과 확인"}
           onPrimary={() => onStepChange("result")}
-          onSpeak={() =>
-            onSpeak("DUR 분석으로 함께 먹으면 안 되는 약, 나이에 주의가 필요한 약을 확인합니다.")
-          }
         />
       )}
 
@@ -328,9 +303,6 @@ function MedicineFlowScreen({
           <StepHeader
             icon={<AlertTriangle className="size-12 text-boyak-red" />}
             title="결과를 확인해주세요"
-            onSpeak={() =>
-              onSpeak(safetyResult?.tts_text || safetyResult?.message || "DUR 분석 결과를 확인해주세요. 주의 문구가 있으면 약사나 의사에게 확인하세요.")
-            }
           />
           {safetyError && (
             <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
@@ -375,16 +347,6 @@ function MedicineFlowScreen({
               <Hospital className="size-8 lg:size-6" aria-hidden="true" />
               의사 상담 권장
             </button>
-            <button
-              className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl border-2 border-boyak-line bg-white px-6 text-2xl font-black lg:min-h-14 lg:text-lg"
-              type="button"
-              onClick={() =>
-                onSpeak(safetyResult?.tts_text || safetyResult?.message || "DUR 분석 결과를 확인해주세요.")
-              }
-            >
-              <Volume2 className="size-8 text-boyak-blue lg:size-6" aria-hidden="true" />
-              결과 음성 안내
-            </button>
           </div>
         </div>
       )}
@@ -400,7 +362,6 @@ function CaptureStep({
   onImageChange,
   onAnalyzePhotos,
   onResetPhotos,
-  onSpeak,
 }) {
   return (
     <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
