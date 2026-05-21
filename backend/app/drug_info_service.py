@@ -88,40 +88,20 @@ def _parse_dosage(text: str) -> str:
     return " ".join(parts)
 
 
-async def _fetch_desc_from_llm(name: str, settings) -> Optional[dict]:
-    if not settings.openai_api_key:
-        return None
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.openai_model,
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": (
-                                "한국 약사입니다. 약 이름이 주어지면 20자 이내의 쉬운 효능 설명만 출력하세요. "
-                                "전문 용어 없이 노인도 이해하기 쉽게 쓰세요. "
-                                "약 이름을 모르면 빈 문자열만 출력하세요."
-                            ),
-                        },
-                        {"role": "user", "content": name},
-                    ],
-                    "max_tokens": 40,
-                    "temperature": 0,
-                },
-            )
-        desc = resp.json()["choices"][0]["message"]["content"].strip()
-        if desc:
-            return {"desc": desc[:30], "dosage": ""}
-    except Exception:
-        pass
-    return None
+def _looks_like_confirmed_drug_name(name: str) -> bool:
+    """EasyDrug 설명 API에는 DB에서 확인된 약명처럼 보이는 값만 보낸다.
+
+    OCR 잡음(예: '팜봉투', '복약안내', '충분한')을 LLM이 그럴듯한 효능으로
+    만들어내면 안전상 문제가 크므로 설명 fallback은 사용하지 않는다.
+    """
+    if not name:
+        return False
+    value = str(name).strip()
+    if len(value) < 3 or len(value) > 80:
+        return False
+    if re.search(r"(복약안내|약봉투|주의사항|문의|전문가|반드시|충분한|없어요|사람은|여성은|임산부|병용하지)", value):
+        return False
+    return bool(_DRUG_SUFFIX_RE.search(value) or re.search(r"\d+\s*(mg|㎎|밀리그램|g|ml|mL)", value, re.IGNORECASE))
 
 
 async def get_drug_descriptions(drug_names: List[str]) -> Dict[str, dict]:
@@ -130,15 +110,24 @@ async def get_drug_descriptions(drug_names: List[str]) -> Dict[str, dict]:
     if not drug_names:
         return {}
 
+    valid_names = []
+    seen = set()
+    for name in drug_names:
+        value = str(name or "").strip()
+        key = re.sub(r"\s+", "", value)
+        if key and key not in seen and _looks_like_confirmed_drug_name(value):
+            seen.add(key)
+            valid_names.append(value)
+
     info: Dict[str, dict] = {}
     missing: List[str] = []
 
-    if settings.public_data_service_key:
+    if settings.public_data_service_key and valid_names:
         async with httpx.AsyncClient(timeout=10) as client:
-            tasks = [_fetch_easy_drug(name, client, settings) for name in drug_names]
+            tasks = [_fetch_easy_drug(name, client, settings) for name in valid_names]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-        for name, item in zip(drug_names, results):
+        for name, item in zip(valid_names, results):
             if isinstance(item, dict):
                 efficacy = item.get("efcyQesitm", "") or ""
                 method = item.get("useMethodQesitm", "") or ""
@@ -151,12 +140,6 @@ async def get_drug_descriptions(drug_names: List[str]) -> Dict[str, dict]:
     else:
         missing = list(drug_names)
 
-    # API에서 못 찾은 약은 LLM으로 설명 생성
-    if missing and settings.openai_api_key:
-        llm_tasks = [_fetch_desc_from_llm(name, settings) for name in missing]
-        llm_results = await asyncio.gather(*llm_tasks, return_exceptions=True)
-        for name, llm_item in zip(missing, llm_results):
-            if isinstance(llm_item, dict) and llm_item.get("desc"):
-                info[name] = llm_item
-
+    # API에서 못 찾은 약은 설명을 만들지 않는다.
+    # OCR 잡음을 LLM이 그럴듯한 효능으로 hallucination하는 것을 막기 위함.
     return info

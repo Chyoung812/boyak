@@ -306,9 +306,11 @@ export default function Home() {
         });
         setSelectedMedicineCandidates(initialSelected);
 
-        // 각 약의 효능 설명 가져오기 (괄호·용량 제거한 이름으로)
+        // 각 약의 효능 설명 가져오기: DB에서 확인된 top_candidate만 사용
         const resolvedNames = (normalizeData.items ?? [])
-          .map((item) => (item.top_candidate?.alias || item.input || "").replace(/\s*[_(].*$/, "").trim())
+          .map((item) => item.top_candidate?.alias || "")
+          .filter(Boolean)
+          .map((name) => name.replace(/\s*[_(].*$/, "").trim())
           .filter(Boolean);
         if (resolvedNames.length) {
           fetch(`${API_BASE_URL}/api/medicines/descriptions`, {

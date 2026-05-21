@@ -50,8 +50,34 @@ def _search_easy_drug_api(name: str) -> List[Dict[str, Any]]:
         return []
 
 
+OCR_NORMALIZATION_REPLACEMENTS = [
+    # 용량 단위 OCR 흔들림: 밀리그람/일리그럼/필리그램/ng → 밀리그램/mg
+    ("밀리그람", "밀리그램"),
+    ("일리그램", "밀리그램"),
+    ("일리그럼", "밀리그램"),
+    ("필리그램", "밀리그램"),
+    ("릴리그램", "밀리그램"),
+    ("밀리그렇", "밀리그램"),
+    ("mg", "mg"),
+    ("㎎", "mg"),
+    # 샘플에서 반복된 약명 OCR 혼동. 최종 확정은 후보 확인 UI에서 한다.
+    ("초록소정", "화록소정"),
+    ("프로바미정", "씨프로바이정"),
+    ("세프로바이정", "씨프로바이정"),
+]
+
+
+def normalize_ocr_drug_text(text: str) -> str:
+    value = str(text or "").strip()
+    value = value.replace("㎎", "mg")
+    value = re.sub(r"(\d+)\s*ng\b", r"\1mg", value, flags=re.IGNORECASE)
+    for old, new in OCR_NORMALIZATION_REPLACEMENTS:
+        value = value.replace(old, new)
+    return value
+
+
 def norm(text: str) -> str:
-    return re.sub(r"[^0-9a-z가-힣]+", "", str(text or "").lower())
+    return re.sub(r"[^0-9a-z가-힣]+", "", normalize_ocr_drug_text(text).lower())
 
 
 def typo_variants(text: str) -> List[str]:

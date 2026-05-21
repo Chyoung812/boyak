@@ -40,6 +40,7 @@ async def extract_medicine_bags_from_images(files: List[UploadFile]) -> Dict[str
             "ocr_candidate_names": ocr_result["candidate_names"],
             "ocr_matched_names": ocr_result["matched_names"],
             "ocr_raw_texts": ocr_result["raw_texts"],
+            "ocr_match_items": ocr_result.get("match_items", []),
         })
 
     if bags and all(bag.get("ocr_error") for bag in bags):
@@ -91,11 +92,13 @@ async def _ocr_with_naver_clova(
         ocr_error = _extract_naver_ocr_error(ocr_json)
         raw_texts = _extract_naver_ocr_texts(ocr_json)
         candidates = _filter_medicine_name_candidates(raw_texts)
-        matched = _match_db_candidates(candidates)
+        match_items = _match_db_candidate_details(candidates, limit_per_name=3)
+        matched = _top_matched_names(match_items)
         return {
             "medicine_names": matched or candidates,
             "candidate_names": candidates,
             "matched_names": matched,
+            "match_items": match_items,
             "raw_texts": raw_texts[:80],
             "error": ocr_error,
         }
@@ -107,6 +110,7 @@ async def _ocr_with_naver_clova(
             "medicine_names": [],
             "candidate_names": [],
             "matched_names": [],
+            "match_items": [],
             "raw_texts": [],
             "error": f"네이버 OCR 호출에 실패했습니다: {_format_ocr_exception(exc)}",
         }
@@ -184,11 +188,15 @@ def _extract_naver_ocr_error(result: Dict[str, Any]) -> str:
 def _filter_medicine_name_candidates(texts: List[str]) -> List[str]:
     skip_patterns = [
         r"^\d+$",
-        r"(복약안내|발행기관|최근내방|성\s*명|홍길동|생년|보험|본인|부담|비급여|영수|현금|승인|사업자|등록)",
-        r"(약국|병원|의원|처방|조제|전화|팩스|주소|환자|약\s*제\s*비|일자|완료일)",
+        r"(복약안내|발행기관|최근내방|성\s*명|홍길동|생년|보험|본인|부담|비급여|영수|계산서|현금|승인|사업자|등록|서식)",
+        r"(약국|병원|의원|한의원|처방|조제|전화|팩스|주소|환자|약\s*제\s*비|일자|완료일|조제약사)",
         r"(주의사항|보관|상담|문의|원외|투약|약봉투|전문가|상의|알리세요|미리|지속되면)",
         r"(복용|용법|용량|아침|점심|저녁|취침|식전|식후|매일|일\s*\d+\s*회)",
-        r"(치료제|강하제|확장|억제|예방|개선|작용|증상|감염증|소화장애)",
+        r"(치료제|강하제|확장|억제|예방|개선|작용|증상|감염증|소화장애|항혈소판제)",
+        r"(총수납|신분확인|소득공제|수유부|자외선|마세요|피하세요|하세요|나타날|있어요)",
+        r"(혈압을|낮추고|신장을|재흡수|눕거나|자세에서|일어날때|천천히|쪼개지|위장장애)",
+        r"(공휴|남/만|^[0-9]+세$|김철수|이영희|영등포|주황색|설파제|과민증|혈소판|응집|생성|방지|심혈관계)",
+        r"^장용정$",
         r"^\d+\s*(일|회|정|포|개|번)$",
     ]
     medicine_hints = re.compile(
@@ -227,31 +235,68 @@ def _filter_medicine_name_candidates(texts: List[str]) -> List[str]:
 
 
 def _clean_ocr_text(text: str) -> str:
+    try:
+        from app.drug_index_service import normalize_ocr_drug_text
+    except Exception:
+        normalize_ocr_drug_text = lambda value: value
+
     cleaned = str(text or "").strip(" [](){}:;,.\"'")
     cleaned = re.sub(r"\s+", " ", cleaned)
     cleaned = cleaned.replace(" O", "0").replace("Omg", "0mg").replace("OOmg", "100mg")
     cleaned = cleaned.replace("㎎", "mg")
+    cleaned = normalize_ocr_drug_text(cleaned)
     return cleaned.strip()
 
 
-def _match_db_candidates(candidates: List[str]) -> List[str]:
+def _match_db_candidate_details(candidates: List[str], limit_per_name: int = 3) -> List[Dict[str, Any]]:
     try:
         from app.drug_index_service import has_db, normalize_medicine_names
 
         if not has_db():
-            return candidates
+            return []
 
-        result = normalize_medicine_names(candidates, limit_per_name=1)
-        matched: List[str] = []
-        seen = set()
+        result = normalize_medicine_names(candidates, limit_per_name=limit_per_name)
+        items: List[Dict[str, Any]] = []
+        seen_inputs = set()
         for item in result.get("items", []):
-            if not item.get("top_candidate"):
+            input_text = item.get("input") or ""
+            key = re.sub(r"\s+", "", input_text)
+            if not key or key in seen_inputs:
                 continue
-            text = item.get("input") or ""
-            key = re.sub(r"\s+", "", text)
-            if key and key not in seen:
-                seen.add(key)
-                matched.append(text)
-        return matched
+            candidates_for_item = item.get("candidates") or []
+            candidates_for_item = [
+                candidate for candidate in candidates_for_item
+                if not (
+                    candidate.get("match_basis") == "fuzzy_alias"
+                    and int(candidate.get("score") or 0) < 75
+                )
+            ]
+            if not candidates_for_item:
+                continue
+            seen_inputs.add(key)
+            items.append({
+                "input": input_text,
+                "status": item.get("status"),
+                "candidates": candidates_for_item[:limit_per_name],
+                "top_candidate": item.get("top_candidate"),
+                "needs_confirmation": item.get("status") != "matched",
+            })
+        return items
     except Exception:
-        return candidates
+        return []
+
+
+def _top_matched_names(match_items: List[Dict[str, Any]]) -> List[str]:
+    names: List[str] = []
+    seen = set()
+    for item in match_items:
+        top = item.get("top_candidate") or {}
+        alias = str(top.get("alias") or item.get("input") or "").strip()
+        if not alias:
+            continue
+        key = re.sub(r"\s+", "", alias)
+        if key in seen:
+            continue
+        seen.add(key)
+        names.append(alias)
+    return names

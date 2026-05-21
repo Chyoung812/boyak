@@ -79,6 +79,57 @@ def _format_alert(raw: Dict[str, Any]) -> Dict[str, Any]:
     return {"category": category, "level": level, "title": title, "reason": reason, "raw": raw}
 
 
+def _public_level(alerts: List[Dict[str, Any]]) -> str:
+    if any(alert.get("level") == "danger" for alert in alerts):
+        return "위험"
+    if alerts:
+        return "주의"
+    return "확인완료"
+
+
+def _public_message(level: str, alerts: List[Dict[str, Any]]) -> str:
+    if level == "위험":
+        return "함께 복용 전 의료진 확인이 필요한 조합이 있어요."
+    if level == "주의":
+        return "나이·복용 조건에 따라 확인이 필요한 항목이 있어요."
+    return "현재 선택한 약에서는 DUR 위험 신호가 확인되지 않았어요."
+
+
+def _public_action(level: str) -> str:
+    if level == "위험":
+        return "복용 전 약사나 의사에게 약봉투를 모두 보여주고 확인하세요."
+    if level == "주의":
+        return "복용 중인 약과 나이를 의료진에게 알려 최종 확인하세요."
+    return "새 증상이나 다른 약이 추가되면 다시 확인하세요."
+
+
+def _public_matches(alerts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    matches: List[Dict[str, Any]] = []
+    for alert in alerts:
+        raw = alert.get("raw", {}) or {}
+        matches.append({
+            "category": alert.get("category", ""),
+            "level": alert.get("level", ""),
+            "title": alert.get("title", ""),
+            "reason": alert.get("reason", ""),
+            "medicine_name": raw.get("product_name") or raw.get("product_name_a") or raw.get("product_name_b") or "",
+            "ingredient": raw.get("ingredient_name") or raw.get("ingredient_name_a") or raw.get("ingredient_name_b") or "",
+            "raw": raw,
+        })
+    return matches
+
+
+def _with_public_summary(payload: Dict[str, Any], alerts: List[Dict[str, Any]]) -> Dict[str, Any]:
+    level = _public_level(alerts)
+    return {
+        **payload,
+        "level": level,
+        "message": _public_message(level, alerts),
+        "action": _public_action(level),
+        "matches": _public_matches(alerts),
+    }
+
+
 def check_medicine_safety(
     medicine_names: List[str],
     age: Optional[int] = None,
@@ -100,13 +151,13 @@ def check_medicine_safety(
     if dispensed_days_ago is not None and dispensed_days_ago > 30:
         notes.append(f"조제된 지 {dispensed_days_ago}일이 지났습니다. 유효기간을 확인하세요.")
 
-    return {
+    return _with_public_summary({
         "ok": True,
         "medicine_count": len(medicine_names),
         "alert_count": len(alerts),
         "alerts": alerts,
         "notes": notes,
-    }
+    }, alerts)
 
 
 def check_medicine_bags_safety(
@@ -138,13 +189,28 @@ def check_medicine_bags_safety(
     cross_alerts = [_format_alert(a) for a in cross_raw if a.get("category") == "병용금기"]
 
     total_alerts = sum(len(b["alerts"]) for b in bag_results) + len(cross_alerts)
-    return {
+    medicine_origins = []
+    for bag in medicine_bags:
+        for name in bag.get("medicine_names", []):
+            medicine_origins.append({
+                "bag_id": bag.get("bag_id"),
+                "source_label": bag.get("source_label"),
+                "medicine_name": name,
+            })
+
+    all_alerts = [alert for bag in bag_results for alert in bag["alerts"]] + cross_alerts
+    return _with_public_summary({
         "ok": True,
         "bag_count": len(medicine_bags),
+        "photo_count": len(medicine_bags),
+        "medicine_count": len(all_names),
+        "medicine_names": all_names,
+        "medicine_origins": medicine_origins,
         "total_alert_count": total_alerts,
         "bags": bag_results,
         "cross_bag_alerts": cross_alerts,
-    }
+        "cross_bag_matches": _public_matches(cross_alerts),
+    }, all_alerts)
 
 
 def check_selected_medicines_safety(
@@ -166,10 +232,10 @@ def check_selected_medicines_safety(
     if has_supplement:
         notes.append("건강기능식품 병용 중입니다. 영양소 과잉 섭취 여부를 확인하세요.")
 
-    return {
+    return _with_public_summary({
         "ok": True,
         "medicine_count": len(selected_medicines),
         "alert_count": len(alerts),
         "alerts": alerts,
         "notes": notes,
-    }
+    }, alerts)

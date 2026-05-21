@@ -5,6 +5,8 @@ frontend/.env.local
 
 # Python
 backend/.venv/
+backend/.venv_ocr/
+backend/.venv_ocr32/
 __pycache__/
 *.pyc
 *.pyo
@@ -28,3 +30,9 @@ node_modules/
 # Database
 *.sqlite3
 backend/data/processed/
+
+# OCR experiments / local media
+backend/models/
+backend/data/ocr_eval/
+backend/data/ocr_samples/*
+!backend/data/ocr_samples/README.md

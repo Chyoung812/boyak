@@ -67,7 +67,7 @@ function MedicineFlowScreen({
       key: `${bag.bag_id || bagIndex}-${medicineIndex}-${name}`,
     })),
   );
-  const normalizeItems = normalizeResult?.items || [];
+  const normalizeItems = (normalizeResult?.items || []).filter((item) => item.top_candidate);
 
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="medicine-title">
@@ -163,7 +163,7 @@ function MedicineFlowScreen({
           {/* 약 카드 */}
           <div className="grid gap-3">
             {normalizeItems.map((item, i) => {
-              const alias = item.top_candidate?.alias || item.input || "";
+              const alias = item.top_candidate?.alias || "";
               const name = alias.replace(/\s*[_(].*$/, "").trim();
               const isLoading = drugDescriptions === null;
               const info = isLoading ? {} : (drugDescriptions?.[alias] || drugDescriptions?.[name] || {});
