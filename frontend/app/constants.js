@@ -50,7 +50,14 @@ export const extractedMedicines = [
   { name: "타이레놀정", detail: "해열진통제 · 2026.05.10 조제" },
 ];
 
-export const homeMedicines = ["감기약", "소화제", "관절 영양제"];
+export const homeMedicines = [
+  { name: "감기약",     icon: "Thermometer", color: "#3B9EF8" },
+  { name: "소화제",     icon: "Leaf",         color: "#4DB87D" },
+  { name: "관절·통증약", icon: "Bone",         color: "#F97316" },
+  { name: "혈압약",     icon: "Heart",        color: "#EF4444" },
+  { name: "당뇨약",     icon: "Droplets",     color: "#8B5CF6" },
+  { name: "영양제",     icon: "Sparkles",     color: "#EAB308" },
+];
 
 export const nearbyHospitals = [
   {

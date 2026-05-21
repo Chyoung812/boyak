@@ -214,6 +214,9 @@ def _filter_medicine_name_candidates(texts: List[str]) -> List[str]:
             continue
         if len(compact) < 3:
             continue
+        # 한글 없는 순수 영어 단어는 약품명 접미사(정/mg 등)가 있어야 통과
+        if not re.search(r"[가-힣]", cleaned) and not medicine_hints.search(cleaned):
+            continue
         if compact in seen:
             continue
 

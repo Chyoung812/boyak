@@ -2,17 +2,23 @@
 
 import { memo, useState } from "react";
 import {
+  Bone,
   Camera,
-  ChevronDown,
-  ChevronUp,
+  Droplets,
   FileText,
+  Heart,
   ImagePlus,
   Leaf,
   Loader2,
   Pill,
   Plus,
   ShieldCheck,
+  Sparkles,
+  Thermometer,
+  Volume2,
 } from "lucide-react";
+
+const MEDICINE_ICON_MAP = { Thermometer, Leaf, Bone, Heart, Droplets, Sparkles };
 
 import { homeMedicines, medicineSteps, medicineStepKeys } from "../constants";
 import BackButton from "./BackButton";
@@ -49,6 +55,7 @@ function MedicineFlowScreen({
   onStepChange,
   onHerbalChange,
   onAgeChange,
+  onSpeak,
 }) {
   const visibleStepMap = { capture: 0, ocr: 0, review: 0, add: 1, herbal: 2, dur: 3, result: 3 };
   const currentIndex = visibleStepMap[step] ?? 0;
@@ -93,7 +100,11 @@ function MedicineFlowScreen({
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
             type="button"
-            onClick={() => onStepChange(medicineStepKeys[index])}
+            onClick={() => {
+                const key = medicineStepKeys[index];
+                if (key === "herbal") { onAgeChange?.(""); onHerbalChange?.(null); }
+                onStepChange(key);
+              }}
           >
             <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-5 lg:text-xs">
               {index + 1}
@@ -126,84 +137,60 @@ function MedicineFlowScreen({
       )}
 
       {step === "review" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5 overflow-y-auto">
-          <StepHeader
-            icon={<ListChecks className="size-12 text-boyak-blue" />}
-            title="추출된 내용을 확인해주세요"
-          />
-          {ocrError && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
-              OCR 분석 실패: {ocrError}
+        <div className="flex flex-col gap-4">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between">
+            <p className="text-xl font-black text-boyak-ink">확인된 약 {normalizeItems.length}개</p>
+            <button
+              className="rounded-xl border border-boyak-line bg-white px-4 py-2 text-base font-black"
+              type="button"
+              onClick={() => onStepChange("capture")}
+            >
+              다시 촬영하기
+            </button>
+          </div>
+          {/* 에러 */}
+          {(ocrError || normalizeError) && (
+            <div className="rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-4 text-base font-black text-boyak-red">
+              {ocrError || normalizeError}
             </div>
           )}
-          {!ocrError && !ocrMedicines.length && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5D08A] bg-[#FFF8E8] p-5 text-xl font-black text-[#8A5A00] lg:text-base">
-              아직 추출된 약 이름이 없어요. 사진을 다시 찍거나 OCR 키 설정을 확인해주세요.
+          {!ocrError && !normalizeItems.length && (
+            <div className="rounded-2xl border-2 border-[#F5D08A] bg-[#FFF8E8] p-4 text-base font-black text-[#8A5A00]">
+              약 이름을 찾지 못했어요. 약봉투가 잘 보이게 다시 찍어주세요.
             </div>
           )}
-          {normalizeError && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
-              약 후보 확인 실패: {normalizeError}
-            </div>
-          )}
-          <div className="grid gap-4">
-            {normalizeItems.map((item, index) => {
-              const candidates = item.candidates || [];
+          {/* 약 카드 */}
+          <div className="grid gap-3">
+            {normalizeItems.map((item, i) => {
+              const alias = item.top_candidate?.alias || item.input || "";
+              const name = alias.replace(/\s*[_(].*$/, "").trim();
+              const isLoading = drugDescriptions === null;
+              const info = isLoading ? {} : (drugDescriptions?.[alias] || drugDescriptions?.[name] || {});
               return (
-                <div key={`${item.input}-${index}`} className="rounded-2xl border-2 border-boyak-line bg-boyak-field p-5 lg:p-4">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div>
-                      <p className="text-lg font-black text-boyak-muted lg:text-base">인식된 약 이름</p>
-                      <p className="text-2xl font-black text-boyak-ink lg:text-xl">{item.input}</p>
-                    </div>
-                    <span className={`rounded-full px-3 py-1 text-sm font-black ${item.status === "matched" ? "bg-[#EDF9F1] text-boyak-green" : "bg-[#FFF8E8] text-[#8A5A00]"}`}>
-                      {item.status === "matched" ? "일치" : item.status === "needs_confirmation" ? "확인 필요" : "못 찾음"}
-                    </span>
-                  </div>
-                  {candidates.length ? (() => {
-                    const ingredientCodes = Array.from(new Set(candidates.map((candidate) => candidate.ingredient_code).filter(Boolean)));
-                    if (ingredientCodes.length <= 1) {
-                      const selected = selectedCandidates?.[index] || candidates[0];
-                      return (
-                        <div className="rounded-xl border-2 border-boyak-blue bg-[#EDF4FF] p-4">
-                          <p className="text-lg font-black text-boyak-ink lg:text-base">
-                            {selected?.alias || candidates[0]?.alias}
-                          </p>
-                          <p className="mt-1 text-base font-bold text-boyak-blue">
-                            같은 성분 약으로 확인돼 자동 선택했어요.
-                          </p>
-                          <p className="mt-1 text-sm text-boyak-muted">성분코드 {ingredientCodes[0] || "확인필요"}</p>
-                        </div>
-                      );
-                    }
-                    return (
-                      <div className="grid gap-2 md:grid-cols-2">
-                        {candidates.slice(0, 4).map((candidate) => {
-                          const selected = selectedCandidates?.[index]?.product_code === candidate.product_code && selectedCandidates?.[index]?.ingredient_code === candidate.ingredient_code;
-                          return (
-                            <button
-                              key={`${candidate.product_code}-${candidate.ingredient_code}-${candidate.alias}`}
-                              className={`rounded-xl border-2 p-4 text-left font-bold ${selected ? "border-boyak-blue bg-[#EDF4FF]" : "border-boyak-line bg-white"}`}
-                              type="button"
-                              onClick={() => onSelectCandidate(index, candidate)}
-                            >
-                              <p className="text-lg font-black text-boyak-ink lg:text-base">{candidate.alias}</p>
-                              <p className="mt-1 text-sm text-boyak-muted">성분코드 {candidate.ingredient_code || "확인필요"}</p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    );
-                  })() : (
-                    <p className="rounded-xl border border-[#F5D08A] bg-white p-4 text-lg font-bold text-[#8A5A00]">
-                      후보를 못 찾았어요. 약봉투 전체가 보이게 다시 찍거나 약 이름을 더 정확히 입력해주세요.
-                    </p>
-                  )}
-                </div>
+                <DrugCard
+                  key={i}
+                  name={name}
+                  desc={isLoading ? "" : (info.desc || "")}
+                  dosage={info.dosage || ""}
+                  onSpeak={onSpeak}
+                />
               );
             })}
           </div>
-          <NextAction label="선택한 후보로 계속" onClick={() => onStepChange("add")} />
+          {/* 안내 */}
+          <p className="rounded-xl bg-boyak-field px-4 py-3 text-sm text-boyak-muted">
+            ℹ️ 사진이 흐리면 정확도가 떨어질 수 있어요. 다시 촬영하면 더 정확해져요.
+          </p>
+          {/* 다음 단계 */}
+          <button
+            className="inline-flex min-h-16 w-full items-center justify-center rounded-2xl bg-boyak-blue text-xl font-black text-white disabled:bg-boyak-line"
+            type="button"
+            disabled={!normalizeItems.length}
+            onClick={() => onStepChange("add")}
+          >
+            다음 단계로 →
+          </button>
         </div>
       )}
 
@@ -213,58 +200,43 @@ function MedicineFlowScreen({
             icon={<Plus className="size-12 text-boyak-blue" />}
             title="집에 있는 다른 약도 추가할까요?"
           />
-          {normalizeItems.length > 0 && (
-            <div className="mb-5 rounded-2xl bg-[#EDF4FF] px-5 py-4">
-              <p className="text-lg font-black text-boyak-muted lg:text-base mb-3">인식된 약</p>
-              <div className="grid gap-3">
-                {normalizeItems.map((item, i) => {
-                  const alias = item.top_candidate?.alias || item.input || "";
-                  const name = alias.replace(/\s*[_(].*$/, "").trim();
-                  const isLoading = drugDescriptions === null;
-                  const desc = isLoading ? "" : (drugDescriptions?.[alias] || drugDescriptions?.[name] || "");
-                  return (
-                    <div key={i} className="rounded-xl bg-white px-4 py-3">
-                      <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
-                      {isLoading
-                        ? <p className="mt-1 text-sm text-boyak-muted">불러오는 중...</p>
-                        : desc
-                          ? <p className="mt-1 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>
-                          : null
-                      }
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
           {selectedHomeMedicines.length > 0 && (
             <p className="mb-4 rounded-xl bg-[#EDF4FF] px-4 py-3 text-lg font-black text-boyak-blue lg:text-base">
               추가됨: {selectedHomeMedicines.join(", ")}
             </p>
           )}
-          <div className="grid gap-4 md:grid-cols-3 lg:gap-3">
+          <div className="grid grid-cols-3 gap-3 lg:gap-2">
             {homeMedicines.map((medicine) => {
-              const isSelected = selectedHomeMedicines.includes(medicine);
+              const isSelected = selectedHomeMedicines.includes(medicine.name);
+              const IconComp = MEDICINE_ICON_MAP[medicine.icon] || Pill;
               return (
                 <button
-                  key={medicine}
-                  className={`min-h-28 rounded-2xl border-2 px-5 text-3xl font-black transition lg:min-h-20 lg:text-2xl ${
+                  key={medicine.name}
+                  className={`flex flex-col items-center justify-center gap-2.5 rounded-2xl border-2 py-5 transition lg:py-4 ${
                     isSelected
-                      ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
-                      : "border-[#30343B] bg-white text-boyak-ink"
+                      ? "border-boyak-blue bg-[#EDF4FF]"
+                      : "border-boyak-line bg-white hover:border-boyak-blue"
                   }`}
                   type="button"
                   aria-pressed={isSelected}
-                  onClick={() => onToggleHomeMedicine?.(medicine)}
+                  onClick={() => onToggleHomeMedicine?.(medicine.name)}
                 >
-                  {isSelected ? "✓ " : ""}{medicine}
+                  <span
+                    className="flex size-14 items-center justify-center rounded-2xl lg:size-12"
+                    style={{ backgroundColor: medicine.color + "22" }}
+                  >
+                    <IconComp className="size-8 lg:size-7" style={{ color: medicine.color }} />
+                  </span>
+                  <span className={`text-base font-black lg:text-sm ${isSelected ? "text-boyak-blue" : "text-boyak-ink"}`}>
+                    {isSelected ? "✓ " : ""}{medicine.name}
+                  </span>
                 </button>
               );
             })}
           </div>
           <NextAction
             label={selectedHomeMedicines.length > 0 ? `${selectedHomeMedicines.length}개 추가 후 계속` : "추가 없이 계속"}
-            onClick={() => onStepChange("herbal")}
+            onClick={() => { onAgeChange?.(""); onHerbalChange?.(null); onStepChange("herbal"); }}
           />
         </div>
       )}
@@ -324,56 +296,16 @@ function MedicineFlowScreen({
       )}
 
       {step === "result" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
-          <StepHeader
-            icon={<AlertTriangle className="size-12 text-boyak-red" />}
-            title="결과를 확인해주세요"
-          />
-          {safetyError && (
-            <div className="mb-5 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red lg:text-base">
-              DUR 분석 실패: {safetyError}
-            </div>
-          )}
-          <div className="grid gap-5 lg:grid-cols-2 lg:gap-3">
-            <div className={`rounded-2xl border-2 p-6 lg:p-5 ${safetyResult?.level === "위험" ? "border-[#FFC5C5] bg-[#FFF0F0]" : safetyResult?.level === "주의" ? "border-[#F5D08A] bg-[#FFF8E8]" : "border-[#BFE5CB] bg-[#EDF9F1]"}`}>
-              <p className="mb-3 text-xl font-black text-boyak-red lg:mb-2 lg:text-lg">{safetyResult?.level || "확인필요"}</p>
-              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">{safetyResult?.message || "분석 결과를 확인하세요"}</h2>
-              <p className="text-xl font-bold leading-relaxed text-boyak-muted lg:text-lg">
-                {safetyResult?.action || "공공 DUR 데이터 기반 확인 보조 결과입니다. 약사나 의사에게 최종 확인하세요."}
-              </p>
-            </div>
-            <div className="rounded-2xl border-2 border-[#BFE5CB] bg-[#EDF9F1] p-6 lg:p-5">
-              <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">근거</p>
-              <h2 className="mb-3 text-3xl font-black lg:mb-2 lg:text-2xl">DUR 공공데이터</h2>
-              <p className="text-xl font-bold leading-relaxed text-boyak-muted lg:text-lg">
-                노인주의, 연령금기, 병용금기 데이터 기준으로 확인했어요. 진단이나 처방은 아닙니다.
-              </p>
-            </div>
-          </div>
-          {!!safetyResult?.matches?.length && (
-            <div className="mt-5 rounded-2xl border-2 border-boyak-line bg-white p-5">
-              <p className="mb-3 text-xl font-black text-boyak-ink">확인된 항목</p>
-              <div className="grid gap-3">
-                {safetyResult.matches.slice(0, 5).map((match, index) => (
-                  <div key={`${match.category}-${index}`} className="rounded-xl bg-boyak-field p-4">
-                    <p className="text-lg font-black text-boyak-red">{match.category}</p>
-                    <p className="mt-1 text-base font-bold text-boyak-muted">{match.medicine_name || match.ingredient}</p>
-                    <p className="mt-1 text-base text-boyak-muted">{match.reason}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:mt-4 lg:gap-3">
-            <button
-              className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl bg-boyak-red px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg"
-              type="button"
-            >
-              <Hospital className="size-8 lg:size-6" aria-hidden="true" />
-              의사 상담 권장
-            </button>
-          </div>
-        </div>
+        <ResultStep
+          safetyResult={safetyResult}
+          safetyError={safetyError}
+          normalizeItems={normalizeItems}
+          hasHerbalMedicine={hasHerbalMedicine}
+          selectedHomeMedicines={selectedHomeMedicines}
+          onSpeak={onSpeak}
+          onRestart={() => onStepChange("capture")}
+          onAddMore={() => onStepChange("add")}
+        />
       )}
     </section>
   );
@@ -481,129 +413,162 @@ function CaptureStep({
   );
 }
 
-function ResultStep({ safetyResult, safetyError, normalizeItems, drugDescriptions = {}, onSpeak, onRestart }) {
-  const [showDetails, setShowDetails] = useState(false);
+function parseDosageParts(dosage = "") {
+  const parts = [];
+  if (dosage.includes("아침")) parts.push({ icon: "🌅", text: "아침" });
+  else if (dosage.includes("저녁")) parts.push({ icon: "🌙", text: "저녁" });
+  if (dosage.includes("식후")) parts.push({ icon: "🍴", text: "식후" });
+  else if (dosage.includes("식전")) parts.push({ icon: "🍴", text: "식전" });
+  else if (dosage.includes("취침")) parts.push({ icon: "💤", text: "취침 전" });
+  const m = dosage.match(/하루\s*\d+번/);
+  if (m) parts.push({ icon: "📅", text: m[0] });
+  return parts;
+}
 
-  // 백엔드 응답: { ok, alert_count, alerts: [{category, level, title, reason}], notes }
-  const alerts = safetyResult?.alerts || [];
+function DrugCard({ name, desc, dosage, onSpeak }) {
+  const dosingParts = parseDosageParts(dosage);
+
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border-2 border-boyak-line bg-white p-4">
+      <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-[#F0F4FF]">
+        <Pill className="size-8 text-boyak-blue" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
+          {onSpeak && (
+            <button type="button" onClick={() => onSpeak(desc ? `${name}. ${desc}` : name)} className="text-boyak-muted">
+              <Volume2 className="size-5" aria-hidden="true" />
+            </button>
+          )}
+        </div>
+        {desc
+          ? <p className="mt-0.5 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>
+          : <p className="mt-0.5 text-sm text-boyak-muted">약사 또는 의사에게 문의하세요</p>
+        }
+        {dosingParts.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {dosingParts.map((p, i) => (
+              <span key={i} className="rounded-full bg-[#EDF4FF] px-2.5 py-0.5 text-xs font-black text-boyak-blue">
+                {p.icon} {p.text}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const GUIDANCE = {
+  safe:    "지금 드시는 약들은 함께 복용해도 큰 문제가 없어요.\n처방받은 용법대로 드시면 됩니다.",
+  warning: "일부 약이 함께 드실 때 주의가 필요해요.\n드시기 전에 약사 또는 의사 선생님께 꼭 한 번 여쭤보세요.",
+  danger:  "이 약들은 함께 드시면 위험할 수 있어요.\n지금 바로 약사 또는 의사 선생님께 확인하세요.",
+  unknown: "분석 결과를 확인하지 못했어요.\n약사 또는 의사 선생님께 직접 문의해 주세요.",
+};
+
+function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalMedicine, selectedHomeMedicines = [], onSpeak, onRestart, onAddMore }) {
   const notes = safetyResult?.notes || [];
+  const alerts = safetyResult?.alerts || [];
   const hasDanger = alerts.some((a) => a.level === "danger");
   const hasWarning = alerts.some((a) => a.level === "warning");
+  const level = hasDanger ? "danger" : hasWarning ? "warning" : safetyResult ? "safe" : "unknown";
 
-  const level = hasDanger ? "위험" : hasWarning ? "주의" : safetyResult ? "안전" : "확인필요";
-  const levelConfig = {
-    "안전":    { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", textColor: "text-boyak-green", icon: "✅", label: "괜찮아요", message: "이 약들은 함께 드셔도 안전해요." },
-    "주의":    { bg: "bg-[#FFF8E8]", border: "border-[#F5D08A]", textColor: "text-[#8A5A00]",   icon: "⚠️", label: "주의가 필요해요", message: "주의가 필요한 항목이 있어요. 약사나 의사에게 확인하세요." },
-    "위험":    { bg: "bg-[#FFF0F0]", border: "border-[#FFC5C5]", textColor: "text-boyak-red",   icon: "❌", label: "위험해요", message: "함께 먹으면 안 되는 약이 있어요. 꼭 의사에게 확인하세요." },
-    "확인필요": { bg: "bg-[#EDF4FF]", border: "border-[#C8DAF7]", textColor: "text-boyak-blue", icon: "❓", label: "확인이 필요해요", message: "약 정보를 확인하지 못했어요. 다시 시도해주세요." },
+  const durConfig = {
+    safe:    { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", text: "text-boyak-green", emoji: "😊", label: "같이 먹어도 괜찮아요!" },
+    warning: { bg: "bg-[#FFF8E8]", border: "border-[#F5D08A]", text: "text-[#8A5A00]",   emoji: "⚠️", label: "주의가 필요해요"     },
+    danger:  { bg: "bg-[#FFF0F0]", border: "border-[#FFC5C5]", text: "text-boyak-red",   emoji: "🚫", label: "함께 드시면 안돼요"  },
+    unknown: { bg: "bg-[#EDF4FF]", border: "border-[#C8DAF7]", text: "text-boyak-blue",  emoji: "❓", label: "확인이 필요해요"     },
   };
-  const cfg = levelConfig[level];
+  const dur = durConfig[level];
+  const guidance = GUIDANCE[level];
 
-  const cleanName = (alias) => (alias || "").replace(/\s*[_(].*$/, "").trim();
-  const recognizedDrugs = (normalizeItems || [])
-    .map((item) => cleanName(item.top_candidate?.alias || item.input))
+  const drugNames = normalizeItems
+    .map((item) => (item.top_candidate?.alias || item.input || "").replace(/\s*[_(].*$/, "").trim())
     .filter(Boolean);
+  const allDrugNames = [...drugNames, ...selectedHomeMedicines];
+  const hasHerbal = hasHerbalMedicine === true;
 
-  const ttsText = cfg.message + (recognizedDrugs.length ? ` 확인한 약은 ${recognizedDrugs.join(", ")} 입니다.` : "");
+  const drugSummary = allDrugNames.join(" · ") + (hasHerbal ? " + 한약" : "");
+  const ttsAll = `${dur.label}. ${guidance.replace("\n", " ")}`;
 
   return (
     <div className="flex flex-col gap-4">
-      {safetyError && (
-        <div className="rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] p-5 text-xl font-black text-boyak-red">
-          분석 실패: {safetyError}
+      {/* 헤더 */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-2xl font-black text-boyak-ink">약 복용 안전 확인 결과</h2>
+        <button
+          className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-boyak-line bg-white px-4 py-2 text-base font-black"
+          type="button"
+          onClick={() => onSpeak?.(ttsAll)}
+        >
+          <Volume2 className="size-5" /> 전체 읽어주기
+        </button>
+      </div>
+
+      {/* 분석한 약 요약 */}
+      {allDrugNames.length > 0 && (
+        <div className="rounded-2xl border-2 border-boyak-line bg-white px-5 py-4">
+          <p className="mb-1.5 text-sm font-bold text-boyak-muted">분석한 약</p>
+          <p className="text-lg font-black text-boyak-ink leading-snug">{drugSummary}</p>
+          <p className="mt-1 text-base text-boyak-muted">를 함께 복용해도 될까요?</p>
         </div>
       )}
 
       {/* 메인 결과 카드 */}
-      <div className={`rounded-[28px] border-2 ${cfg.border} ${cfg.bg} p-8 text-center`}>
-        <div className="mb-3 text-6xl">{cfg.icon}</div>
-        <p className={`text-4xl font-black ${cfg.textColor} mb-3 lg:text-3xl`}>{cfg.label}</p>
-        <p className="text-2xl font-black leading-snug lg:text-xl">{cfg.message}</p>
+      <div className={`rounded-2xl border-2 ${dur.border} ${dur.bg} p-6`}>
+        <div className="flex items-center gap-4 mb-4">
+          <span className="text-5xl">{dur.emoji}</span>
+          <p className={`text-3xl font-black lg:text-2xl ${dur.text}`}>{dur.label}</p>
+        </div>
+        <div className="border-t border-current border-opacity-20 pt-4">
+          {guidance.split("\n").map((line, i) => (
+            <p key={i} className={`text-lg font-bold leading-relaxed lg:text-base ${i === 0 ? dur.text : "mt-1.5 text-boyak-muted"}`}>
+              {line}
+            </p>
+          ))}
+        </div>
+        {safetyError && (
+          <p className="mt-3 rounded-xl bg-white/60 px-4 py-2 text-sm font-bold text-boyak-red">{safetyError}</p>
+        )}
       </div>
 
-      {/* 확인한 약 목록 + 설명 */}
-      {(normalizeItems || []).length > 0 && (
-        <div className="rounded-2xl border-2 border-boyak-line bg-boyak-field px-5 py-4">
-          <p className="text-lg font-black text-boyak-muted mb-3 lg:text-base">확인한 약</p>
-          <div className="grid gap-2">
-            {(normalizeItems || []).map((item, i) => {
-              const alias = item.top_candidate?.alias || item.input || "";
-              const name = cleanName(alias);
-              const desc = drugDescriptions?.[alias] || drugDescriptions?.[name] || "";
-              return (
-                <div key={i} className="rounded-xl bg-white px-4 py-3">
-                  <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
-                  {desc && <p className="mt-1 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 자세히 보기 토글 (항상 표시) */}
-      <button
-        className="flex w-full items-center justify-between rounded-2xl border-2 border-boyak-line bg-white px-6 py-4 text-xl font-black lg:text-lg"
-        type="button"
-        onClick={() => setShowDetails((v) => !v)}
-      >
-        <span>자세히 보기{alerts.length > 0 ? ` (주의 ${alerts.length}건)` : ""}</span>
-        {showDetails ? <ChevronUp className="size-6" /> : <ChevronDown className="size-6" />}
-      </button>
-      {showDetails && (
-        <div className="rounded-2xl border-2 border-boyak-line bg-white p-5">
-          <div className="grid gap-3">
-            {/* OCR 인식 결과 확인 */}
-            <div className="rounded-xl bg-[#EDF4FF] p-4">
-              <p className="text-lg font-black text-boyak-blue lg:text-base">인식된 약 목록</p>
-              <div className="mt-2 grid gap-1">
-                {(normalizeItems || []).map((item, i) => (
-                  <p key={i} className="text-base text-boyak-ink">
-                    · {cleanName(item.top_candidate?.alias || item.input)}
-                    {!item.top_candidate && <span className="ml-2 text-[#8A5A00]">(DB 미확인)</span>}
-                  </p>
-                ))}
-              </div>
+      {/* 한약 + 추가 노트 */}
+      {(hasHerbal || notes.length > 0) && (
+        <div className="grid gap-2">
+          {hasHerbal && (
+            <div className="flex items-start gap-3 rounded-2xl bg-[#EDF4FF] px-5 py-4">
+              <span className="mt-0.5 text-xl">🌿</span>
+              <p className="text-base font-bold text-boyak-blue leading-relaxed">
+                한약을 함께 드시는 경우, 한약-양약 상호작용이 있을 수 있어요.<br />
+                한의사나 약사 선생님께 꼭 확인하세요.
+              </p>
             </div>
-            {/* DUR 주의/위험 항목 */}
-            {alerts.slice(0, 5).map((alert, index) => {
-              // 영문 성분명 제거, 첫 문장만 표시
-              const simpleTitle = (alert.title || "").replace(/:\s*[a-zA-Z\s]+$/, "").trim();
-              const simpleReason = (alert.reason || "").split(/[.。]/)[0].trim();
-              return (
-                <div key={`${alert.category}-${index}`} className={`rounded-xl p-4 ${alert.level === "danger" ? "bg-[#FFF0F0]" : "bg-[#FFF8E8]"}`}>
-                  <p className={`text-base font-black lg:text-sm ${alert.level === "danger" ? "text-boyak-red" : "text-[#8A5A00]"}`}>
-                    {simpleTitle || alert.category}
-                  </p>
-                  {simpleReason && <p className="mt-1 text-sm text-boyak-muted">{simpleReason}</p>}
-                </div>
-              );
-            })}
-            {notes.map((note, index) => (
-              <div key={`note-${index}`} className="rounded-xl bg-boyak-field p-3">
-                <p className="text-sm text-boyak-muted">{note}</p>
-              </div>
-            ))}
-          </div>
+          )}
+          {notes.map((note, i) => (
+            <div key={i} className="flex items-start gap-3 rounded-2xl bg-[#EDF4FF] px-5 py-4">
+              <span className="mt-0.5 text-xl">💡</span>
+              <p className="text-base font-bold text-boyak-blue">{note}</p>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* 액션 버튼 */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* 하단 버튼 */}
+      <div className="grid grid-cols-2 gap-3 pt-1">
         <button
-          className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl border-2 border-boyak-line bg-white px-6 text-2xl font-black lg:min-h-14 lg:text-lg"
-          type="button"
-          onClick={() => onSpeak(ttsText)}
-        >
-          <Volume2 className="size-8 text-boyak-blue lg:size-6" aria-hidden="true" />
-          결과 음성 안내
-        </button>
-        <button
-          className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl bg-boyak-blue px-6 text-2xl font-black text-white lg:min-h-14 lg:text-lg"
+          className="inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl border-2 border-boyak-line bg-white text-xl font-black lg:min-h-14"
           type="button"
           onClick={onRestart}
         >
-          처음으로
+          <Camera className="size-6" aria-hidden="true" /> 다시 촬영하기
+        </button>
+        <button
+          className="inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-boyak-ink px-4 text-xl font-black text-white lg:min-h-14"
+          type="button"
+          onClick={onAddMore}
+        >
+          다른 약 추가하기 <Plus className="size-6" aria-hidden="true" />
         </button>
       </div>
     </div>
