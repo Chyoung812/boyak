@@ -8,8 +8,15 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
+
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=BACKEND_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     public_data_service_key: str = Field(default="", alias="PUBLIC_DATA_SERVICE_KEY")
     public_data_key_mode: str = Field(default="decoding", alias="PUBLIC_DATA_KEY_MODE")

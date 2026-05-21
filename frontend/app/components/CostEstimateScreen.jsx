@@ -73,6 +73,14 @@ function CostEstimateScreen({
   const costStepKeys = ["body", "treatment", "estimate", "chat"];
   const currentIndex = costStepKeys.indexOf(step);
   const currentStepLabel = costFlowSteps[currentIndex] ?? costFlowSteps[0];
+
+  const handleBack = () => {
+    if (currentIndex > 0) {
+      onStepChange(costStepKeys[currentIndex - 1]);
+    } else {
+      onBack();
+    }
+  };
   const selectedCost = treatmentCosts[selectedTreatment];
   const selectedDetail = treatmentCostDetails[selectedTreatment] ?? treatmentCostDetails["기타 문의"];
 
@@ -82,6 +90,8 @@ function CostEstimateScreen({
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [voiceLiveText, setVoiceLiveText] = useState("");
+  const [voiceTranscript, setVoiceTranscript] = useState("");
   const recognitionRef = useRef(null);
 
   const sendMessage = useCallback((text) => {
@@ -94,8 +104,7 @@ function CostEstimateScreen({
       { role: "bot", text: answer },
     ]);
     setChatInput("");
-    onSpeak(answer);
-  }, [onSpeak]);
+  }, []);
 
   const startVoice = useCallback(() => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -112,17 +121,44 @@ function CostEstimateScreen({
     const rec = new SR();
     rec.lang = "ko-KR";
     rec.continuous = false;
-    rec.interimResults = false;
+    rec.interimResults = true;
     recognitionRef.current = rec;
     setIsListening(true);
+    setVoiceLiveText("");
+    setVoiceTranscript("");
+    if (step === "chat") {
+      setChatInput("");
+    }
     rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      setIsListening(false);
-      recognitionRef.current = null;
-      sendMessage(text);
+      let interimText = "";
+      let finalText = "";
+      for (let i = 0; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interimText += r[0].transcript;
+      }
+      const displayText = (finalText + interimText).trim();
+      setVoiceLiveText(displayText);
+      if (step === "chat") {
+        setChatInput(displayText);
+      }
+      if (finalText) {
+        const text = finalText.trim();
+        setVoiceTranscript(text);
+        if (step === "chat") {
+          sendMessage(text);
+        } else if (step === "body") {
+          const matched = costBodyOptions.find((b) => text.includes(b));
+          if (matched) {
+            onSelectBody(matched);
+            onStepChange("treatment");
+          }
+        }
+      }
     };
     rec.onerror = () => {
       setIsListening(false);
+      setVoiceLiveText("");
       recognitionRef.current = null;
       onSpeak("음성을 인식하지 못했어요.");
     };
@@ -131,11 +167,11 @@ function CostEstimateScreen({
       recognitionRef.current = null;
     };
     rec.start();
-  }, [sendMessage, onSpeak]);
+  }, [step, sendMessage, onSelectBody, onStepChange, onSpeak]);
 
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="cost-title">
-      <BackButton onClick={onBack} />
+      <BackButton onClick={handleBack} />
       <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-orange lg:mb-3 lg:gap-3">
         <span className="grid size-14 place-items-center rounded-full bg-boyak-orange text-3xl font-black text-white lg:size-10 lg:text-2xl">
           W
@@ -143,14 +179,6 @@ function CostEstimateScreen({
         <h1 id="cost-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
           병원비 예상 비용 확인 흐름
         </h1>
-        <button
-          className="ml-auto grid size-16 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="병원비 화면 음성 안내 듣기"
-          onClick={onSpeak}
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
       </div>
 
       {/* Mobile step indicator */}
@@ -164,21 +192,20 @@ function CostEstimateScreen({
       {/* Desktop step bar */}
       <div className="mb-8 hidden gap-3 md:grid md:grid-cols-4 lg:mb-3 lg:gap-2" aria-label="병원비 확인 단계">
         {costFlowSteps.map((label, index) => (
-          <button
+          <div
             key={label}
-            className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
+            className={`flex min-h-16 items-center rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
               index <= currentIndex
                 ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
-            type="button"
-            onClick={() => onStepChange(costStepKeys[index])}
+            aria-current={index === currentIndex ? "step" : undefined}
           >
             <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-orange text-sm text-white lg:size-5 lg:text-xs">
               {index + 1}
             </span>
             {label}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -232,6 +259,18 @@ function CostEstimateScreen({
               />
               {isListening ? "듣는 중... (다시 누르면 취소)" : "말하기"}
             </button>
+            {(isListening || voiceTranscript) && (
+              <div className="mt-3 rounded-2xl bg-[#FFF3E8] px-5 py-4 text-center">
+                <p className="text-base font-bold text-boyak-muted lg:text-sm">
+                  {isListening ? "듣는 중..." : "제가 들은 내용"}
+                </p>
+                <p className="mt-1 text-2xl font-black text-boyak-orange lg:text-xl">
+                  {voiceLiveText || voiceTranscript
+                    ? `"${voiceLiveText || voiceTranscript}"`
+                    : "말씀해 주세요"}
+                </p>
+              </div>
+            )}
           </section>
         )}
 
@@ -323,17 +362,9 @@ function CostEstimateScreen({
             <p className="mt-4 rounded-xl bg-[#F1F4FA] p-4 text-lg font-bold text-boyak-muted lg:p-3 lg:text-base">
               약국 약값, 주사, 추가 촬영, 야간/공휴일 가산은 별도예요.
             </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="mt-4 flex justify-center">
               <button
-                className="inline-flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-boyak-orange px-5 text-xl font-black text-white lg:min-h-14 lg:text-lg"
-                type="button"
-                onClick={onSpeak}
-              >
-                <Volume2 className="size-7 lg:size-6" aria-hidden="true" />
-                음성으로 듣기
-              </button>
-              <button
-                className="min-h-16 rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-14 lg:text-lg"
+                className="min-h-16 w-full max-w-sm rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-14 lg:text-lg"
                 type="button"
                 onClick={() => onStepChange("chat")}
               >
@@ -376,9 +407,11 @@ function CostEstimateScreen({
             {/* 입력창 */}
             <div className="flex gap-2">
               <input
-                className="flex-1 rounded-xl border-2 border-boyak-line px-4 py-3 text-xl font-bold outline-none focus:border-boyak-orange lg:text-lg"
+                className={`flex-1 rounded-xl border-2 px-4 py-3 text-xl font-bold outline-none lg:text-lg ${
+                  isListening ? "border-boyak-orange bg-[#FFF3E8]" : "border-boyak-line focus:border-boyak-orange"
+                }`}
                 type="text"
-                placeholder="예: MRI도 건강보험 돼요?"
+                placeholder={isListening ? "듣는 중..." : "예: MRI도 건강보험 돼요?"}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage(chatInput)}

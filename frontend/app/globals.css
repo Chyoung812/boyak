@@ -12,3 +12,19 @@ body {
   background-color: #f9fafb;
   color: #111827;
 }
+
+.font-size-large .text-sm { font-size: 0.98rem !important; }
+.font-size-large .text-base { font-size: 1.12rem !important; }
+.font-size-large .text-lg { font-size: 1.26rem !important; }
+.font-size-large .text-xl { font-size: 1.4rem !important; }
+.font-size-large .text-2xl { font-size: 1.68rem !important; }
+.font-size-large .text-3xl { font-size: 2.1rem !important; }
+.font-size-large .text-4xl { font-size: 2.52rem !important; }
+
+.font-size-xlarge .text-sm { font-size: 1.08rem !important; }
+.font-size-xlarge .text-base { font-size: 1.24rem !important; }
+.font-size-xlarge .text-lg { font-size: 1.4rem !important; }
+.font-size-xlarge .text-xl { font-size: 1.55rem !important; }
+.font-size-xlarge .text-2xl { font-size: 1.86rem !important; }
+.font-size-xlarge .text-3xl { font-size: 2.32rem !important; }
+.font-size-xlarge .text-4xl { font-size: 2.8rem !important; }

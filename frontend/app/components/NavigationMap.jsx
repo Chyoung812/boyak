@@ -156,7 +156,6 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
           stepsRef.current = steps;
           setInstruction(steps.length > 0 ? steps[0].description : "안내 시작 버튼을 눌러 GPS 추적을 시작하세요.");
           setRouteInfo({ totalDistance, totalTime, stairs });
-          onSpeak(`${hospital.name}까지 경로를 준비했습니다. 예상 도보 ${totalTime}분입니다.`);
 
           if (latlngs.length > 0) {
             const poly = L.polyline(latlngs, { color: "#0088FF", weight: 6, opacity: 0.85 }).addTo(map);
