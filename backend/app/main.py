@@ -16,6 +16,7 @@ from app.ai_service import route_user_text_with_ai
 from app.config import get_settings
 from app.cost_service import get_cost_estimate
 from app.drug_index_service import normalize_medicine_names
+from app.drug_info_service import get_drug_descriptions
 from app.ocr_service import extract_medicine_bags_from_images
 from app.public_data_client import PublicDataClient
 from app.public_data_sources import list_sources
@@ -209,6 +210,17 @@ async def ai_route(payload: AiRouteRequest) -> dict:
 @app.post("/api/medicines/normalize")
 def medicines_normalize(payload: MedicineNormalizeRequest) -> dict:
     return normalize_medicine_names(payload.str_names())
+
+
+class MedicineDescriptionsRequest(BaseModel):
+    medicine_names: List[str]
+
+
+@app.post("/api/medicines/descriptions")
+async def medicines_descriptions(payload: MedicineDescriptionsRequest) -> dict:
+    logger.info("[약정보] 효능 조회 | %d개: %s", len(payload.medicine_names), payload.medicine_names)
+    descriptions = await get_drug_descriptions(payload.medicine_names)
+    return {"ok": True, "descriptions": descriptions}
 
 
 @app.get("/api/medicines/smoke")

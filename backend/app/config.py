@@ -1,12 +1,15 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import List
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=BACKEND_DIR / ".env", env_file_encoding="utf-8", extra="ignore")
 
     public_data_service_key: str = Field(default="", alias="PUBLIC_DATA_SERVICE_KEY")
     public_data_key_mode: str = Field(default="decoding", alias="PUBLIC_DATA_KEY_MODE")
@@ -44,6 +47,8 @@ class Settings(BaseSettings):
     kakao_rest_api_key: str = Field(default="", alias="KAKAO_REST_API_KEY")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+    naver_clova_ocr_invoke_url: str = Field(default="", alias="NAVER_CLOVA_OCR_INVOKE_URL")
+    naver_clova_ocr_secret: str = Field(default="", alias="NAVER_CLOVA_OCR_SECRET")
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")
 
     @property
