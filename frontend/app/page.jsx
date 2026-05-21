@@ -29,6 +29,7 @@ export default function Home() {
   const [isMedicineOcrLoading, setIsMedicineOcrLoading] = useState(false);
   const [medicineNormalizeResult, setMedicineNormalizeResult] = useState(null);
   const [medicineNormalizeError, setMedicineNormalizeError] = useState(null);
+  const [medicineDrugDescriptions, setMedicineDrugDescriptions] = useState(null);
   const [selectedMedicineCandidates, setSelectedMedicineCandidates] = useState({});
   const [medicineSafetyResult, setMedicineSafetyResult] = useState(null);
   const [medicineSafetyError, setMedicineSafetyError] = useState(null);
@@ -103,6 +104,7 @@ export default function Home() {
     setIsMedicineOcrLoading(false);
     setMedicineNormalizeResult(null);
     setMedicineNormalizeError(null);
+    setMedicineDrugDescriptions(null);
     setSelectedMedicineCandidates({});
     setMedicineSafetyResult(null);
     setMedicineSafetyError(null);
@@ -195,6 +197,23 @@ export default function Home() {
           if (item.top_candidate) initialSelected[index] = item.top_candidate;
         });
         setSelectedMedicineCandidates(initialSelected);
+
+        // 각 약의 효능 설명 가져오기 (괄호·용량 제거한 이름으로)
+        const resolvedNames = (normalizeData.items ?? [])
+          .map((item) => (item.top_candidate?.alias || item.input || "").replace(/\s*[_(].*$/, "").trim())
+          .filter(Boolean);
+        if (resolvedNames.length) {
+          fetch(`${API_BASE_URL}/api/medicines/descriptions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ medicine_names: resolvedNames }),
+          })
+            .then((r) => r.json())
+            .then((d) => setMedicineDrugDescriptions(d.ok ? (d.descriptions || {}) : {}))
+            .catch(() => setMedicineDrugDescriptions({}));
+        } else {
+          setMedicineDrugDescriptions({});
+        }
       }
 
       setMedicineOcrResult(data);
@@ -204,7 +223,7 @@ export default function Home() {
     } catch (error) {
       setMedicineOcrError(error.message || "OCR 분석에 실패했어요.");
       setMedicineNormalizeError(error.message || "약 후보 확인에 실패했어요.");
-      setMedicineStep("review");
+      setMedicineStep("capture");
       speak("사진 분석에 실패했어요. 화면의 안내를 확인해주세요.");
     } finally {
       setIsMedicineOcrLoading(false);
@@ -474,6 +493,7 @@ export default function Home() {
             ocrError={medicineOcrError}
             normalizeResult={medicineNormalizeResult}
             normalizeError={medicineNormalizeError}
+            drugDescriptions={medicineDrugDescriptions}
             selectedCandidates={selectedMedicineCandidates}
             safetyResult={medicineSafetyResult}
             safetyError={medicineSafetyError}

@@ -29,6 +29,7 @@ function MedicineFlowScreen({
   ocrError,
   normalizeResult,
   normalizeError,
+  drugDescriptions = {},
   selectedCandidates,
   safetyResult,
   safetyError,
@@ -117,17 +118,24 @@ function MedicineFlowScreen({
       </div>
 
       {step === "capture" && (
-        <CaptureStep
-          previewUrl={previewUrl}
-          photoPreviews={photoPreviews}
-          cameraInputRef={cameraInputRef}
-          galleryInputRef={galleryInputRef}
-          onImageChange={onImageChange}
-          onAnalyzePhotos={onAnalyzePhotos}
-          onResetPhotos={onResetPhotos}
-          onStepChange={onStepChange}
-          onSpeak={onSpeak}
-        />
+        <>
+          {ocrError && (
+            <div className="mb-4 rounded-2xl border-2 border-[#F5B5B5] bg-[#FFF1F1] px-5 py-4 text-xl font-black text-boyak-red">
+              분석 실패: {ocrError}
+            </div>
+          )}
+          <CaptureStep
+            previewUrl={previewUrl}
+            photoPreviews={photoPreviews}
+            cameraInputRef={cameraInputRef}
+            galleryInputRef={galleryInputRef}
+            onImageChange={onImageChange}
+            onAnalyzePhotos={onAnalyzePhotos}
+            onResetPhotos={onResetPhotos}
+            onStepChange={onStepChange}
+            onSpeak={onSpeak}
+          />
+        </>
       )}
 
       {step === "ocr" && (
@@ -152,10 +160,26 @@ function MedicineFlowScreen({
           />
           {normalizeItems.length > 0 && (
             <div className="mb-5 rounded-2xl bg-[#EDF4FF] px-5 py-4">
-              <p className="text-lg font-black text-boyak-muted lg:text-base">인식된 약</p>
-              <p className="mt-1 text-2xl font-black text-boyak-ink lg:text-xl">
-                {normalizeItems.map((item) => item.top_candidate?.alias || item.input).filter(Boolean).join("  ·  ")}
-              </p>
+              <p className="text-lg font-black text-boyak-muted lg:text-base mb-3">인식된 약</p>
+              <div className="grid gap-3">
+                {normalizeItems.map((item, i) => {
+                  const alias = item.top_candidate?.alias || item.input || "";
+                  const name = alias.replace(/\s*[_(].*$/, "").trim();
+                  const isLoading = drugDescriptions === null;
+                  const desc = isLoading ? "" : (drugDescriptions?.[alias] || drugDescriptions?.[name] || "");
+                  return (
+                    <div key={i} className="rounded-xl bg-white px-4 py-3">
+                      <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
+                      {isLoading
+                        ? <p className="mt-1 text-sm text-boyak-muted">불러오는 중...</p>
+                        : desc
+                          ? <p className="mt-1 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>
+                          : null
+                      }
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
           {selectedHomeMedicines.length > 0 && (
@@ -253,6 +277,7 @@ function MedicineFlowScreen({
           safetyResult={safetyResult}
           safetyError={safetyError}
           normalizeItems={normalizeItems}
+          drugDescriptions={drugDescriptions}
           onSpeak={onSpeak}
           onRestart={() => onStepChange("capture")}
         />
@@ -364,23 +389,30 @@ function CaptureStep({
   );
 }
 
-function ResultStep({ safetyResult, safetyError, normalizeItems, onSpeak, onRestart }) {
+function ResultStep({ safetyResult, safetyError, normalizeItems, drugDescriptions = {}, onSpeak, onRestart }) {
   const [showDetails, setShowDetails] = useState(false);
 
-  const level = safetyResult?.level || "확인필요";
-  const levelConfig = {
-    "안전":    { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", textColor: "text-boyak-green",   icon: "✅", label: "괜찮아요" },
-    "주의":    { bg: "bg-[#FFF8E8]", border: "border-[#F5D08A]", textColor: "text-[#8A5A00]",     icon: "⚠️", label: "주의가 필요해요" },
-    "위험":    { bg: "bg-[#FFF0F0]", border: "border-[#FFC5C5]", textColor: "text-boyak-red",     icon: "❌", label: "위험해요" },
-    "확인필요": { bg: "bg-[#EDF4FF]", border: "border-[#C8DAF7]", textColor: "text-boyak-blue",   icon: "❓", label: "확인이 필요해요" },
-  };
-  const cfg = levelConfig[level] || levelConfig["확인필요"];
+  // 백엔드 응답: { ok, alert_count, alerts: [{category, level, title, reason}], notes }
+  const alerts = safetyResult?.alerts || [];
+  const notes = safetyResult?.notes || [];
+  const hasDanger = alerts.some((a) => a.level === "danger");
+  const hasWarning = alerts.some((a) => a.level === "warning");
 
+  const level = hasDanger ? "위험" : hasWarning ? "주의" : safetyResult ? "안전" : "확인필요";
+  const levelConfig = {
+    "안전":    { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", textColor: "text-boyak-green", icon: "✅", label: "괜찮아요", message: "이 약들은 함께 드셔도 안전해요." },
+    "주의":    { bg: "bg-[#FFF8E8]", border: "border-[#F5D08A]", textColor: "text-[#8A5A00]",   icon: "⚠️", label: "주의가 필요해요", message: "주의가 필요한 항목이 있어요. 약사나 의사에게 확인하세요." },
+    "위험":    { bg: "bg-[#FFF0F0]", border: "border-[#FFC5C5]", textColor: "text-boyak-red",   icon: "❌", label: "위험해요", message: "함께 먹으면 안 되는 약이 있어요. 꼭 의사에게 확인하세요." },
+    "확인필요": { bg: "bg-[#EDF4FF]", border: "border-[#C8DAF7]", textColor: "text-boyak-blue", icon: "❓", label: "확인이 필요해요", message: "약 정보를 확인하지 못했어요. 다시 시도해주세요." },
+  };
+  const cfg = levelConfig[level];
+
+  const cleanName = (alias) => (alias || "").replace(/\s*[_(].*$/, "").trim();
   const recognizedDrugs = (normalizeItems || [])
-    .map((item) => item.top_candidate?.alias || item.input)
+    .map((item) => cleanName(item.top_candidate?.alias || item.input))
     .filter(Boolean);
 
-  const matches = safetyResult?.matches || [];
+  const ttsText = cfg.message + (recognizedDrugs.length ? ` 확인한 약은 ${recognizedDrugs.join(", ")} 입니다.` : "");
 
   return (
     <div className="flex flex-col gap-4">
@@ -394,52 +426,74 @@ function ResultStep({ safetyResult, safetyError, normalizeItems, onSpeak, onRest
       <div className={`rounded-[28px] border-2 ${cfg.border} ${cfg.bg} p-8 text-center`}>
         <div className="mb-3 text-6xl">{cfg.icon}</div>
         <p className={`text-4xl font-black ${cfg.textColor} mb-3 lg:text-3xl`}>{cfg.label}</p>
-        <p className="text-2xl font-black leading-snug lg:text-xl">
-          {safetyResult?.message || "분석 결과를 확인하세요"}
-        </p>
-        {safetyResult?.action && (
-          <p className="mt-3 text-xl font-bold text-boyak-muted lg:text-base">{safetyResult.action}</p>
-        )}
+        <p className="text-2xl font-black leading-snug lg:text-xl">{cfg.message}</p>
       </div>
 
-      {/* 확인한 약 목록 */}
-      {recognizedDrugs.length > 0 && (
+      {/* 확인한 약 목록 + 설명 */}
+      {(normalizeItems || []).length > 0 && (
         <div className="rounded-2xl border-2 border-boyak-line bg-boyak-field px-5 py-4">
-          <p className="text-lg font-black text-boyak-muted lg:text-base">확인한 약</p>
-          <p className="mt-1 text-2xl font-black text-boyak-ink lg:text-xl">
-            {recognizedDrugs.join("  ·  ")}
-          </p>
+          <p className="text-lg font-black text-boyak-muted mb-3 lg:text-base">확인한 약</p>
+          <div className="grid gap-2">
+            {(normalizeItems || []).map((item, i) => {
+              const alias = item.top_candidate?.alias || item.input || "";
+              const name = cleanName(alias);
+              const desc = drugDescriptions?.[alias] || drugDescriptions?.[name] || "";
+              return (
+                <div key={i} className="rounded-xl bg-white px-4 py-3">
+                  <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
+                  {desc && <p className="mt-1 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {/* 자세히 보기 토글 */}
-      {matches.length > 0 && (
-        <>
-          <button
-            className="flex w-full items-center justify-between rounded-2xl border-2 border-boyak-line bg-white px-6 py-4 text-xl font-black lg:text-lg"
-            type="button"
-            onClick={() => setShowDetails((v) => !v)}
-          >
-            <span>자세히 보기</span>
-            {showDetails
-              ? <ChevronUp className="size-6" />
-              : <ChevronDown className="size-6" />
-            }
-          </button>
-          {showDetails && (
-            <div className="rounded-2xl border-2 border-boyak-line bg-white p-5">
-              <div className="grid gap-3">
-                {matches.slice(0, 5).map((match, index) => (
-                  <div key={`${match.category}-${index}`} className="rounded-xl bg-boyak-field p-4">
-                    <p className="text-lg font-black text-boyak-red lg:text-base">{match.category}</p>
-                    <p className="mt-1 text-base font-bold text-boyak-ink">{match.product_name || match.ingredient_name || match.medicine_name}</p>
-                    <p className="mt-1 text-base text-boyak-muted">{match.reason}</p>
-                  </div>
+      {/* 자세히 보기 토글 (항상 표시) */}
+      <button
+        className="flex w-full items-center justify-between rounded-2xl border-2 border-boyak-line bg-white px-6 py-4 text-xl font-black lg:text-lg"
+        type="button"
+        onClick={() => setShowDetails((v) => !v)}
+      >
+        <span>자세히 보기{alerts.length > 0 ? ` (주의 ${alerts.length}건)` : ""}</span>
+        {showDetails ? <ChevronUp className="size-6" /> : <ChevronDown className="size-6" />}
+      </button>
+      {showDetails && (
+        <div className="rounded-2xl border-2 border-boyak-line bg-white p-5">
+          <div className="grid gap-3">
+            {/* OCR 인식 결과 확인 */}
+            <div className="rounded-xl bg-[#EDF4FF] p-4">
+              <p className="text-lg font-black text-boyak-blue lg:text-base">인식된 약 목록</p>
+              <div className="mt-2 grid gap-1">
+                {(normalizeItems || []).map((item, i) => (
+                  <p key={i} className="text-base text-boyak-ink">
+                    · {cleanName(item.top_candidate?.alias || item.input)}
+                    {!item.top_candidate && <span className="ml-2 text-[#8A5A00]">(DB 미확인)</span>}
+                  </p>
                 ))}
               </div>
             </div>
-          )}
-        </>
+            {/* DUR 주의/위험 항목 */}
+            {alerts.slice(0, 5).map((alert, index) => {
+              // 영문 성분명 제거, 첫 문장만 표시
+              const simpleTitle = (alert.title || "").replace(/:\s*[a-zA-Z\s]+$/, "").trim();
+              const simpleReason = (alert.reason || "").split(/[.。]/)[0].trim();
+              return (
+                <div key={`${alert.category}-${index}`} className={`rounded-xl p-4 ${alert.level === "danger" ? "bg-[#FFF0F0]" : "bg-[#FFF8E8]"}`}>
+                  <p className={`text-base font-black lg:text-sm ${alert.level === "danger" ? "text-boyak-red" : "text-[#8A5A00]"}`}>
+                    {simpleTitle || alert.category}
+                  </p>
+                  {simpleReason && <p className="mt-1 text-sm text-boyak-muted">{simpleReason}</p>}
+                </div>
+              );
+            })}
+            {notes.map((note, index) => (
+              <div key={`note-${index}`} className="rounded-xl bg-boyak-field p-3">
+                <p className="text-sm text-boyak-muted">{note}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* 액션 버튼 */}
@@ -447,7 +501,7 @@ function ResultStep({ safetyResult, safetyError, normalizeItems, onSpeak, onRest
         <button
           className="inline-flex min-h-20 items-center justify-center gap-3 rounded-2xl border-2 border-boyak-line bg-white px-6 text-2xl font-black lg:min-h-14 lg:text-lg"
           type="button"
-          onClick={() => onSpeak(safetyResult?.tts_text || safetyResult?.message || "분석 결과를 확인해주세요.")}
+          onClick={() => onSpeak(ttsText)}
         >
           <Volume2 className="size-8 text-boyak-blue lg:size-6" aria-hidden="true" />
           결과 음성 안내
