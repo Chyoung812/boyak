@@ -12,7 +12,7 @@ RUN pip install --upgrade pip \
 
 COPY backend/app ./app
 COPY backend/data/seed ./data/seed
-COPY backend/data/processed ./data/processed
+COPY backend/data/processed/dur_index.sqlite3 ./data/processed/dur_index.sqlite3
 
 EXPOSE 8000
 

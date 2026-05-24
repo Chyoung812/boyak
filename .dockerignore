@@ -23,7 +23,6 @@ frontend/.env.local
 # large/generated data - use DATABASE_URL in deployment
 backend/data/raw/
 backend/data/cache/
-backend/data/processed/
 **/*.sqlite3
 **/*.sqlite3.gz
 !backend/data/processed/dur_index.sqlite3
