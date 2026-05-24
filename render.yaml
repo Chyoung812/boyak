@@ -1,0 +1,34 @@
+services:
+  # ── FastAPI 백엔드 ───────────────────────────────────────────────────────────
+  - type: web
+    name: boyak-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PUBLIC_DATA_SERVICE_KEY
+        sync: false        # Render 대시보드에서 직접 입력
+      - key: TMAP_APP_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: CORS_ORIGINS
+        sync: false        # 프론트엔드 배포 후 URL 입력 (예: https://boyak-frontend.onrender.com)
+
+  # ── Next.js 프론트엔드 ─────────────────────────────────────────────────────
+  - type: web
+    name: boyak-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm start -- -p $PORT
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false        # 백엔드 배포 후 URL 입력 (예: https://boyak-backend.onrender.com)
+      - key: NEXT_PUBLIC_TMAP_KEY
+        sync: false

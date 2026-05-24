@@ -11,8 +11,15 @@ from fastapi import FastAPI, File, Query, Request, UploadFile
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.ai_service import route_user_text_with_ai
+from app.rate_limit import (
+    limiter, require_daily,
+    ocr_daily, ai_route_daily, tmap_daily,
+    RATE_OCR, RATE_AI_ROUTE, RATE_TMAP,
+)
 from app.config import get_settings
 from app.cost_service import get_cost_estimate
 from app.drug_index_service import normalize_medicine_names
@@ -133,6 +140,8 @@ app = FastAPI(
     version="0.1.0",
 )
 
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(_RequestLogMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -198,12 +207,16 @@ def safety_check_selected(payload: SafetySelectedCheckRequest) -> dict:
 
 
 @app.post("/api/ocr/medicine-bags")
-async def ocr_medicine_bags(files: List[UploadFile] = File(...)) -> dict:
+@limiter.limit(RATE_OCR)
+async def ocr_medicine_bags(request: Request, files: List[UploadFile] = File(...)) -> dict:
+    require_daily(ocr_daily)
     return await extract_medicine_bags_from_images(files)
 
 
 @app.post("/api/ai/route")
-async def ai_route(payload: AiRouteRequest) -> dict:
+@limiter.limit(RATE_AI_ROUTE)
+async def ai_route(request: Request, payload: AiRouteRequest) -> dict:
+    require_daily(ai_route_daily)
     return await route_user_text_with_ai(payload.text)
 
 
@@ -289,7 +302,9 @@ async def hospital_analyze_symptom(payload: SymptomAnalyzeRequest) -> dict:
 
 
 @app.post("/api/hospitals/nearby")
-async def hospital_nearby(payload: HospitalNearbyRequest) -> dict:
+@limiter.limit(RATE_TMAP)
+async def hospital_nearby(request: Request, payload: HospitalNearbyRequest) -> dict:
+    require_daily(tmap_daily)
     dept = payload.department.split(" 또는 ")[0]
     lat, lon = payload.lat, payload.lon
     tmap_key = settings.tmap_app_key
