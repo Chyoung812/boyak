@@ -147,6 +147,9 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   const [transcript, setTranscript] = useState("");
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const audioContextRef = useRef(null);
+  const silenceTimerRef = useRef(null);
+  const speechDetectedRef = useRef(false);
 
   const keyword = extractKeyword(transcript);
   const confirmMsg = keyword
@@ -155,10 +158,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 
   const toggleVoice = useCallback(async () => {
     if (voicePhase === "listening") {
-      // Stop recording
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
+      if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
       return;
     }
 
@@ -169,19 +169,51 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
+      // 무음 감지: 말이 끝나면 자동 정지
+      const audioCtx = new AudioContext();
+      audioContextRef.current = audioCtx;
+      const analyser = audioCtx.createAnalyser();
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      analyser.fftSize = 512;
+      const buf = new Uint8Array(analyser.frequencyBinCount);
+      speechDetectedRef.current = false;
+
+      const SPEECH_THRESHOLD = 15;
+      const SILENCE_MS = 1500;
+
+      const checkSilence = () => {
+        if (mediaRecorderRef.current?.state !== "recording") return;
+        analyser.getByteFrequencyData(buf);
+        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
+        if (avg > SPEECH_THRESHOLD) {
+          speechDetectedRef.current = true;
+          clearTimeout(silenceTimerRef.current);
+          silenceTimerRef.current = null;
+        } else if (speechDetectedRef.current && !silenceTimerRef.current) {
+          silenceTimerRef.current = setTimeout(() => {
+            if (mediaRecorderRef.current?.state === "recording") {
+              mediaRecorderRef.current.stop();
+            }
+          }, SILENCE_MS);
         }
+        requestAnimationFrame(checkSilence);
+      };
+      requestAnimationFrame(checkSilence);
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
       };
 
       mediaRecorder.onstop = async () => {
+        clearTimeout(silenceTimerRef.current);
+        silenceTimerRef.current = null;
+        audioContextRef.current?.close();
+        audioContextRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+
         setVoicePhase("idle");
         onSpeak("목소리를 분석하고 있어요. 잠시만 기다려주세요.");
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        
-        // Release stream
-        stream.getTracks().forEach((track) => track.stop());
 
         const formData = new FormData();
         formData.append("file", audioBlob, "recording.webm");
