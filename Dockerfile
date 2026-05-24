@@ -12,6 +12,7 @@ RUN pip install --upgrade pip \
 
 COPY backend/app ./app
 COPY backend/data/seed ./data/seed
+COPY backend/data/processed ./data/processed
 
 EXPOSE 8000
 

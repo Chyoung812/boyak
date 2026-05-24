@@ -226,7 +226,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       <div className="mx-auto max-w-[560px] rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:max-w-[720px] lg:px-6 lg:py-6">
         <p className="mb-3 text-xl font-black text-boyak-muted lg:text-lg">제가 들은 내용</p>
         <div className="mb-7 rounded-2xl bg-[#F0F7FF] px-6 py-5 text-3xl font-black text-boyak-blue lg:mb-5 lg:text-2xl">
-          "{transcript}"
+          &quot;{transcript}&quot;
         </div>
         <p className="mb-8 text-3xl font-black leading-relaxed sm:text-4xl lg:mb-5 lg:text-2xl">
           {confirmMsg}

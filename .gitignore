@@ -22,6 +22,5 @@ node_modules/
 .DS_Store
 **/.DS_Store
 
-# Database
-*.sqlite3
-backend/data/processed/
+# Database (DUR 인덱스는 Render 배포용으로 추적)
+!backend/data/processed/dur_index.sqlite3
