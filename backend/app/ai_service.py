@@ -1,5 +1,7 @@
 from typing import Any, Dict
 
+import httpx
+
 from app.config import get_settings
 
 
@@ -11,8 +13,6 @@ async def route_user_text_with_ai(text: str) -> Dict[str, Any]:
         return _rule_based_route(text)
 
     try:
-        import httpx
-
         prompt = (
             "다음 사용자 입력을 분석해 가장 적합한 기능을 골라주세요.\n"
             "반환은 JSON 단 하나: {\"intent\": \"<기능>\", \"params\": {<추출값>}}\n\n"
@@ -53,3 +53,40 @@ def _rule_based_route(text: str) -> Dict[str, Any]:
     if any(k in t for k in ["비용", "가격", "얼마", "진료비", "검사비"]):
         return {"ok": True, "source": "rule", "intent": "cost_estimate", "params": {}}
     return {"ok": True, "source": "rule", "intent": "unknown", "params": {}}
+
+
+async def transcribe_audio_with_ai(file) -> Dict[str, Any]:
+    """사용자 오디오 파일을 OpenAI Whisper API로 텍스트 변환."""
+    settings = get_settings()
+
+    if not settings.openai_api_key:
+        return {"ok": False, "reason": "OpenAI API 키가 설정되지 않았습니다."}
+
+    try:
+        audio_content = await file.read()
+        
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                files={
+                    "file": (file.filename, audio_content, file.content_type)
+                },
+                data={
+                    "model": "whisper-1",
+                    "language": "ko"
+                }
+            )
+        
+        if resp.status_code != 200:
+            return {"ok": False, "reason": f"STT 실패: {resp.text}"}
+            
+        body = resp.json()
+        text = body.get("text", "").strip()
+        
+        if not text:
+            return {"ok": False, "reason": "음성을 인식하지 못했습니다."}
+            
+        return {"ok": True, "text": text}
+    except Exception as exc:
+        return {"ok": False, "reason": f"STT 요청 중 에러 발생: {str(exc)}"}

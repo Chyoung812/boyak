@@ -73,14 +73,6 @@ function CostEstimateScreen({
   const costStepKeys = ["body", "treatment", "estimate", "chat"];
   const currentIndex = costStepKeys.indexOf(step);
   const currentStepLabel = costFlowSteps[currentIndex] ?? costFlowSteps[0];
-
-  const handleBack = () => {
-    if (currentIndex > 0) {
-      onStepChange(costStepKeys[currentIndex - 1]);
-    } else {
-      onBack();
-    }
-  };
   const selectedCost = treatmentCosts[selectedTreatment];
   const selectedDetail = treatmentCostDetails[selectedTreatment] ?? treatmentCostDetails["기타 문의"];
 
@@ -90,9 +82,8 @@ function CostEstimateScreen({
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isListening, setIsListening] = useState(false);
-  const [voiceLiveText, setVoiceLiveText] = useState("");
-  const [voiceTranscript, setVoiceTranscript] = useState("");
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const sendMessage = useCallback((text) => {
     const userText = text.trim();
@@ -104,74 +95,65 @@ function CostEstimateScreen({
       { role: "bot", text: answer },
     ]);
     setChatInput("");
-  }, []);
+    onSpeak(answer);
+  }, [onSpeak]);
 
-  const startVoice = useCallback(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      onSpeak("이 브라우저는 음성 인식을 지원하지 않아요.");
+  const toggleVoice = useCallback(async () => {
+    if (isListening) {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-      recognitionRef.current = null;
-      setIsListening(false);
-      return;
-    }
-    const rec = new SR();
-    rec.lang = "ko-KR";
-    rec.continuous = false;
-    rec.interimResults = true;
-    recognitionRef.current = rec;
-    setIsListening(true);
-    setVoiceLiveText("");
-    setVoiceTranscript("");
-    if (step === "chat") {
-      setChatInput("");
-    }
-    rec.onresult = (e) => {
-      let interimText = "";
-      let finalText = "";
-      for (let i = 0; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
-        else interimText += r[0].transcript;
-      }
-      const displayText = (finalText + interimText).trim();
-      setVoiceLiveText(displayText);
-      if (step === "chat") {
-        setChatInput(displayText);
-      }
-      if (finalText) {
-        const text = finalText.trim();
-        setVoiceTranscript(text);
-        if (step === "chat") {
-          sendMessage(text);
-        } else if (step === "body") {
-          const matched = costBodyOptions.find((b) => text.includes(b));
-          if (matched) {
-            onSelectBody(matched);
-            onStepChange("treatment");
-          }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
         }
-      }
-    };
-    rec.onerror = () => {
-      setIsListening(false);
-      setVoiceLiveText("");
-      recognitionRef.current = null;
-      onSpeak("음성을 인식하지 못했어요.");
-    };
-    rec.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-    rec.start();
-  }, [step, sendMessage, onSelectBody, onStepChange, onSpeak]);
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsListening(false);
+        onSpeak("목소리를 분석하고 있어요. 잠시만 기다려주세요.");
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+
+        const formData = new FormData();
+        formData.append("file", audioBlob, "recording.webm");
+
+        try {
+          const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
+          const res = await fetch(`${API_BASE_URL}/api/ai/stt`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.ok && data.text) {
+            sendMessage(data.text);
+          } else {
+            onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
+          }
+        } catch (e) {
+          onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
+        }
+      };
+
+      mediaRecorder.start();
+      setIsListening(true);
+    } catch (e) {
+      onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
+    }
+  }, [isListening, sendMessage, onSpeak]);
 
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="cost-title">
-      <BackButton onClick={handleBack} />
+      <BackButton onClick={onBack} />
       <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-orange lg:mb-3 lg:gap-3">
         <span className="grid size-14 place-items-center rounded-full bg-boyak-orange text-3xl font-black text-white lg:size-10 lg:text-2xl">
           W
@@ -179,6 +161,14 @@ function CostEstimateScreen({
         <h1 id="cost-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
           병원비 예상 비용 확인 흐름
         </h1>
+        <button
+          className="ml-auto grid size-16 place-items-center rounded-full text-boyak-ink lg:size-11"
+          type="button"
+          aria-label="병원비 화면 음성 안내 듣기"
+          onClick={onSpeak}
+        >
+          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
+        </button>
       </div>
 
       {/* Mobile step indicator */}
@@ -192,20 +182,21 @@ function CostEstimateScreen({
       {/* Desktop step bar */}
       <div className="mb-8 hidden gap-3 md:grid md:grid-cols-4 lg:mb-3 lg:gap-2" aria-label="병원비 확인 단계">
         {costFlowSteps.map((label, index) => (
-          <div
+          <button
             key={label}
-            className={`flex min-h-16 items-center rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
+            className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
               index <= currentIndex
                 ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
-            aria-current={index === currentIndex ? "step" : undefined}
+            type="button"
+            onClick={() => onStepChange(costStepKeys[index])}
           >
             <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-orange text-sm text-white lg:size-5 lg:text-xs">
               {index + 1}
             </span>
             {label}
-          </div>
+          </button>
         ))}
       </div>
 
@@ -250,27 +241,15 @@ function CostEstimateScreen({
                   : "border-boyak-line bg-white"
               }`}
               type="button"
-              onClick={startVoice}
+              onClick={toggleVoice}
             >
               <Mic
                 className={`size-8 lg:size-7 ${isListening ? "animate-pulse text-boyak-orange" : "text-boyak-orange"}`}
                 strokeWidth={2.4}
                 aria-hidden="true"
               />
-              {isListening ? "듣는 중... (다시 누르면 취소)" : "말하기"}
+              {isListening ? "듣는 중... (완료 시 한 번 더 누르세요)" : "말하기"}
             </button>
-            {(isListening || voiceTranscript) && (
-              <div className="mt-3 rounded-2xl bg-[#FFF3E8] px-5 py-4 text-center">
-                <p className="text-base font-bold text-boyak-muted lg:text-sm">
-                  {isListening ? "듣는 중..." : "제가 들은 내용"}
-                </p>
-                <p className="mt-1 text-2xl font-black text-boyak-orange lg:text-xl">
-                  {voiceLiveText || voiceTranscript
-                    ? `"${voiceLiveText || voiceTranscript}"`
-                    : "말씀해 주세요"}
-                </p>
-              </div>
-            )}
           </section>
         )}
 
@@ -362,9 +341,17 @@ function CostEstimateScreen({
             <p className="mt-4 rounded-xl bg-[#F1F4FA] p-4 text-lg font-bold text-boyak-muted lg:p-3 lg:text-base">
               약국 약값, 주사, 추가 촬영, 야간/공휴일 가산은 별도예요.
             </p>
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
               <button
-                className="min-h-16 w-full max-w-sm rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-14 lg:text-lg"
+                className="inline-flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-boyak-orange px-5 text-xl font-black text-white lg:min-h-14 lg:text-lg"
+                type="button"
+                onClick={onSpeak}
+              >
+                <Volume2 className="size-7 lg:size-6" aria-hidden="true" />
+                음성으로 듣기
+              </button>
+              <button
+                className="min-h-16 rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-14 lg:text-lg"
                 type="button"
                 onClick={() => onStepChange("chat")}
               >
@@ -407,11 +394,9 @@ function CostEstimateScreen({
             {/* 입력창 */}
             <div className="flex gap-2">
               <input
-                className={`flex-1 rounded-xl border-2 px-4 py-3 text-xl font-bold outline-none lg:text-lg ${
-                  isListening ? "border-boyak-orange bg-[#FFF3E8]" : "border-boyak-line focus:border-boyak-orange"
-                }`}
+                className="flex-1 rounded-xl border-2 border-boyak-line px-4 py-3 text-xl font-bold outline-none focus:border-boyak-orange lg:text-lg"
                 type="text"
-                placeholder={isListening ? "듣는 중..." : "예: MRI도 건강보험 돼요?"}
+                placeholder="예: MRI도 건강보험 돼요?"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage(chatInput)}
@@ -419,7 +404,7 @@ function CostEstimateScreen({
               <button
                 className={`rounded-xl px-4 py-3 text-white transition ${isListening ? "bg-red-500" : "bg-boyak-muted"}`}
                 type="button"
-                onClick={startVoice}
+                onClick={toggleVoice}
                 aria-label="음성 입력"
               >
                 <Mic className={`size-7 ${isListening ? "animate-pulse" : ""}`} strokeWidth={2.4} />

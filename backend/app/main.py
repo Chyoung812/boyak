@@ -28,6 +28,7 @@ from app.ocr_service import extract_medicine_bags_from_images
 from app.public_data_client import PublicDataClient
 from app.public_data_sources import list_sources
 from app.safety_service import check_medicine_bags_safety, check_medicine_safety, check_selected_medicines_safety
+from app.ai_service import transcribe_audio_with_ai
 
 settings = get_settings()
 
@@ -218,6 +219,11 @@ async def ocr_medicine_bags(request: Request, files: List[UploadFile] = File(...
 async def ai_route(request: Request, payload: AiRouteRequest) -> dict:
     require_daily(ai_route_daily)
     return await route_user_text_with_ai(payload.text)
+
+
+@app.post("/api/ai/stt")
+async def ai_stt(file: UploadFile = File(...)) -> dict:
+    return await transcribe_audio_with_ai(file)
 
 
 @app.post("/api/medicines/normalize")
