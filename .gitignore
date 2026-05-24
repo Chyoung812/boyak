@@ -27,9 +27,9 @@ node_modules/
 .DS_Store
 **/.DS_Store
 
-# Database
+# Database (DUR 인덱스는 Render 배포용으로 추적)
 *.sqlite3
-backend/data/processed/
+!backend/data/processed/dur_index.sqlite3
 
 # OCR experiments / local media
 backend/models/
