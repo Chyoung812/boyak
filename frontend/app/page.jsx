@@ -14,14 +14,13 @@ import {
   VolumeX,
 } from "lucide-react";
 
-import { doctorTips, featureCards, hospitalStepKeys, nearbyHospitals, treatmentCostDetails, treatmentCosts } from "./constants";
+import { API_BASE_URL, doctorTips, featureCards, hospitalStepKeys, nearbyHospitals, treatmentCostDetails, treatmentCosts } from "./constants";
 import MedicineFlowScreen from "./components/MedicineFlowScreen";
 import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
 import BackButton from "./components/BackButton";
 
 const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
 
 function getPreferredKoreanVoice() {
   if (!("speechSynthesis" in window)) return null;

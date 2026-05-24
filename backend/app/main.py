@@ -1,8 +1,6 @@
 import asyncio
 import logging
-import logging.handlers
 import time
-from pathlib import Path
 from typing import Any, List, Optional
 from urllib.parse import quote
 
@@ -32,21 +30,13 @@ from app.ai_service import transcribe_audio_with_ai
 
 settings = get_settings()
 
-# ── 로그 설정 ─────────────────────────────────────────────────────────────────
-_LOG_DIR = Path(__file__).resolve().parents[1] / "logs"
-_LOG_DIR.mkdir(exist_ok=True)
-
-_handler = logging.handlers.TimedRotatingFileHandler(
-    _LOG_DIR / "boyak_api.log",
-    when="midnight", backupCount=14, encoding="utf-8",
-)
-_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
-
+# ── 로그 설정 (Docker/Render: stdout으로만 출력) ───────────────────────────────
 logger = logging.getLogger("보약API")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(_handler)
-    logger.addHandler(logging.StreamHandler())  # 콘솔에도 출력
 
 
 class _RequestLogMiddleware(BaseHTTPMiddleware):

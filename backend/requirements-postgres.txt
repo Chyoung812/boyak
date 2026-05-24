@@ -1,0 +1,4 @@
+# PostgreSQL 마이그레이션 전용 (평소엔 설치 불필요)
+# 사용법: pip install -r requirements-postgres.txt
+#         DATABASE_URL='postgresql://...' python scripts/migrate_sqlite_to_postgres.py
+psycopg[binary]==3.2.3

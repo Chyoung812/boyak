@@ -1,4 +1,5 @@
 import base64
+import logging
 import re
 import time
 import uuid
@@ -7,6 +8,8 @@ from typing import Any, Dict, List
 from fastapi import UploadFile
 
 from app.config import get_settings
+
+logger = logging.getLogger("보약API")
 
 
 async def extract_medicine_bags_from_images(files: List[UploadFile]) -> Dict[str, Any]:
@@ -103,9 +106,7 @@ async def _ocr_with_naver_clova(
             "error": ocr_error,
         }
     except Exception as exc:
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("OCR 처리 중 오류 발생: %s", exc)
         return {
             "medicine_names": [],
             "candidate_names": [],

@@ -11,7 +11,7 @@ import {
   Star,
 } from "lucide-react";
 
-import { hospitalFlowSteps, hospitalStepKeys, nearbyHospitals, symptomOptions } from "../constants";
+import { API_BASE_URL, hospitalFlowSteps, hospitalStepKeys, nearbyHospitals, symptomOptions } from "../constants";
 import BackButton from "./BackButton";
 import StepHeader from "./StepHeader";
 import FlowPanel from "./FlowPanel";
@@ -219,7 +219,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
         formData.append("file", audioBlob, "recording.webm");
 
         try {
-          const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
           const res = await fetch(`${API_BASE_URL}/api/ai/stt`, {
             method: "POST",
             body: formData,

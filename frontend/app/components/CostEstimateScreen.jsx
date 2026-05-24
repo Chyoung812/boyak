@@ -4,6 +4,7 @@ import { memo, useCallback, useRef, useState } from "react";
 import { Mic, Send, Volume2 } from "lucide-react";
 
 import {
+  API_BASE_URL,
   costBodyOptions,
   costFlowSteps,
   treatmentCostDetails,
@@ -128,7 +129,6 @@ function CostEstimateScreen({
         formData.append("file", audioBlob, "recording.webm");
 
         try {
-          const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
           const res = await fetch(`${API_BASE_URL}/api/ai/stt`, {
             method: "POST",
             body: formData,
