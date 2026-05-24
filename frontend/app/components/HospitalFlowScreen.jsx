@@ -145,58 +145,73 @@ function HospitalFlowScreen({
 function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening" | "confirm"
   const [transcript, setTranscript] = useState("");
-  const [liveText, setLiveText] = useState("");
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const keyword = extractKeyword(transcript);
   const confirmMsg = keyword
     ? `${keyword} 통증에 맞는 병원을 찾아드릴까요?`
     : `"${transcript}" 증상으로 병원을 찾아드릴까요?`;
 
-  const startVoice = useCallback(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      onSpeak("이 브라우저는 음성 인식을 지원하지 않아요. 아래 버튼으로 선택해 주세요.");
+  const toggleVoice = useCallback(async () => {
+    if (voicePhase === "listening") {
+      // Stop recording
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-      recognitionRef.current = null;
-    }
 
-    const rec = new SR();
-    rec.lang = "ko-KR";
-    rec.continuous = false;
-    rec.interimResults = true;
-    recognitionRef.current = rec;
+    // Start recording
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
 
-    setVoicePhase("listening");
-    setLiveText("");
-    setTranscript("");
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
 
-    rec.onresult = (e) => {
-      const r = e.results[e.results.length - 1];
-      const text = r[0].transcript;
-      setLiveText(text);
-      if (r.isFinal) {
-        setTranscript(text);
-        setLiveText("");
-        setVoicePhase("confirm");
-        recognitionRef.current = null;
-      }
-    };
-    rec.onerror = () => {
-      setVoicePhase("idle");
+      mediaRecorder.onstop = async () => {
+        setVoicePhase("idle");
+        onSpeak("목소리를 분석하고 있어요. 잠시만 기다려주세요.");
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        
+        // Release stream
+        stream.getTracks().forEach((track) => track.stop());
+
+        const formData = new FormData();
+        formData.append("file", audioBlob, "recording.webm");
+
+        try {
+          const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
+          const res = await fetch(`${API_BASE_URL}/api/ai/stt`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.ok && data.text) {
+            setTranscript(data.text);
+            setVoicePhase("confirm");
+          } else {
+            onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
+          }
+        } catch (e) {
+          onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
+        }
+      };
+
+      mediaRecorder.start();
+      setVoicePhase("listening");
       setLiveText("");
-      recognitionRef.current = null;
-      onSpeak("음성을 인식하지 못했어요. 다시 말해 주세요.");
-    };
-    rec.onend = () => {
-      setVoicePhase((p) => (p === "listening" ? "idle" : p));
-      recognitionRef.current = null;
-    };
-    rec.start();
-  }, [onSpeak]);
+      setTranscript("");
+    } catch (e) {
+      onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
+    }
+  }, [voicePhase, onSpeak]);
 
   const handleConfirm = () => onSelect(transcript);
   const handleRetry = () => {
@@ -261,18 +276,14 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
             : "border-[#30343B] bg-white"
         }`}
         type="button"
-        onClick={startVoice}
-        disabled={voicePhase === "listening"}
+        onClick={toggleVoice}
       >
         <Mic
           className={`size-14 lg:size-8 ${voicePhase === "listening" ? "animate-pulse text-boyak-green" : "text-boyak-muted"}`}
           strokeWidth={2.4}
           aria-hidden="true"
         />
-        {voicePhase === "listening" ? "듣는 중..." : "말하기"}
-        {liveText && (
-          <span className="mt-1 text-xl font-bold text-boyak-green lg:text-base">"{liveText}"</span>
-        )}
+        {voicePhase === "listening" ? "듣는 중... (완료 시 한 번 더 누르세요)" : "말하기"}
       </button>
 
       {/* 구분선 */}

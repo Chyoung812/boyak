@@ -82,7 +82,8 @@ function CostEstimateScreen({
   ]);
   const [chatInput, setChatInput] = useState("");
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   const sendMessage = useCallback((text) => {
     const userText = text.trim();
@@ -97,41 +98,58 @@ function CostEstimateScreen({
     onSpeak(answer);
   }, [onSpeak]);
 
-  const startVoice = useCallback(() => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      onSpeak("이 브라우저는 음성 인식을 지원하지 않아요.");
+  const toggleVoice = useCallback(async () => {
+    if (isListening) {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
       return;
     }
-    if (recognitionRef.current) {
-      recognitionRef.current.abort();
-      recognitionRef.current = null;
-      setIsListening(false);
-      return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        setIsListening(false);
+        onSpeak("목소리를 분석하고 있어요. 잠시만 기다려주세요.");
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        stream.getTracks().forEach((track) => track.stop());
+
+        const formData = new FormData();
+        formData.append("file", audioBlob, "recording.webm");
+
+        try {
+          const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8001";
+          const res = await fetch(`${API_BASE_URL}/api/ai/stt`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.ok && data.text) {
+            sendMessage(data.text);
+          } else {
+            onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
+          }
+        } catch (e) {
+          onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
+        }
+      };
+
+      mediaRecorder.start();
+      setIsListening(true);
+    } catch (e) {
+      onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
     }
-    const rec = new SR();
-    rec.lang = "ko-KR";
-    rec.continuous = false;
-    rec.interimResults = false;
-    recognitionRef.current = rec;
-    setIsListening(true);
-    rec.onresult = (e) => {
-      const text = e.results[0][0].transcript;
-      setIsListening(false);
-      recognitionRef.current = null;
-      sendMessage(text);
-    };
-    rec.onerror = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-      onSpeak("음성을 인식하지 못했어요.");
-    };
-    rec.onend = () => {
-      setIsListening(false);
-      recognitionRef.current = null;
-    };
-    rec.start();
-  }, [sendMessage, onSpeak]);
+  }, [isListening, sendMessage, onSpeak]);
 
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="cost-title">
@@ -223,14 +241,14 @@ function CostEstimateScreen({
                   : "border-boyak-line bg-white"
               }`}
               type="button"
-              onClick={startVoice}
+              onClick={toggleVoice}
             >
               <Mic
                 className={`size-8 lg:size-7 ${isListening ? "animate-pulse text-boyak-orange" : "text-boyak-orange"}`}
                 strokeWidth={2.4}
                 aria-hidden="true"
               />
-              {isListening ? "듣는 중... (다시 누르면 취소)" : "말하기"}
+              {isListening ? "듣는 중... (완료 시 한 번 더 누르세요)" : "말하기"}
             </button>
           </section>
         )}
@@ -386,7 +404,7 @@ function CostEstimateScreen({
               <button
                 className={`rounded-xl px-4 py-3 text-white transition ${isListening ? "bg-red-500" : "bg-boyak-muted"}`}
                 type="button"
-                onClick={startVoice}
+                onClick={toggleVoice}
                 aria-label="음성 입력"
               >
                 <Mic className={`size-7 ${isListening ? "animate-pulse" : ""}`} strokeWidth={2.4} />
