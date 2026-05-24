@@ -26,6 +26,7 @@ backend/data/cache/
 backend/data/processed/
 **/*.sqlite3
 **/*.sqlite3.gz
+!backend/data/processed/dur_index.sqlite3
 
 # git/editor
 .git/
