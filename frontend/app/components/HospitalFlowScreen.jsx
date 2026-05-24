@@ -206,7 +206,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 
       mediaRecorder.start();
       setVoicePhase("listening");
-      setLiveText("");
       setTranscript("");
     } catch (e) {
       onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
@@ -217,7 +216,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   const handleRetry = () => {
     setVoicePhase("idle");
     setTranscript("");
-    setLiveText("");
   };
 
   // ── 확인 화면 ──
