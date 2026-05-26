@@ -21,8 +21,17 @@ import CostEstimateScreen from "./components/CostEstimateScreen";
 import BackButton from "./components/BackButton";
 
 const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
+const doctorTipAudioEntries = doctorTips.flatMap((tip, index) => {
+  const tipNumber = String(index + 1).padStart(2, "0");
+  return [
+    [tip.summary, `/audio/tip${tipNumber}_simple.wav`],
+    [tip.detail, `/audio/tip${tipNumber}_friendly.wav`],
+  ];
+});
+const SLOW_STATIC_PLAYBACK_RATE = 0.65;
 
 const STATIC_AUDIO = {
+  ...Object.fromEntries(doctorTipAudioEntries),
   // home
   "약 복용 안전 확인, 병원 길찾기, 병원비 예상 중 필요한 기능을 선택해주세요.": "/audio/home_friendly.wav",
   "필요한 기능을 선택해주세요.": "/audio/home_simple.wav",
@@ -118,8 +127,9 @@ export default function Home() {
     setIsSpeaking(false);
   }, []);
 
-  const speak = useCallback(async (message) => {
-    if (!message?.trim()) return;
+  const speak = useCallback(async (message, options = {}) => {
+    if (!message?.trim()) return false;
+    const { onDone } = options;
     speakControllerRef.current?.abort();
     speakControllerRef.current = null;
     if (audioRef.current) {
@@ -128,15 +138,21 @@ export default function Home() {
     }
     setIsSpeaking(true);
 
-    const staticPath = voiceType === "carat" && STATIC_AUDIO[message.trim()];
+    const staticPath = voiceType === "carat" ? STATIC_AUDIO[message.trim()] : null;
     if (staticPath) {
       const audio = new Audio(staticPath);
-      if (ttsSpeed === "slow") audio.playbackRate = 0.75;
+      if (ttsSpeed === "slow") audio.playbackRate = SLOW_STATIC_PLAYBACK_RATE;
       audioRef.current = audio;
-      audio.onended = () => { setIsSpeaking(false); audioRef.current = null; };
+      audio.onended = () => { setIsSpeaking(false); audioRef.current = null; onDone?.(); };
       audio.onerror = () => { setIsSpeaking(false); audioRef.current = null; };
-      audio.play().catch(() => setIsSpeaking(false));
-      return;
+      try {
+        await audio.play();
+        return true;
+      } catch (error) {
+        setIsSpeaking(false);
+        audioRef.current = null;
+        return false;
+      }
     }
 
     const controller = new AbortController();
@@ -157,6 +173,7 @@ export default function Home() {
         setIsSpeaking(false);
         URL.revokeObjectURL(url);
         audioRef.current = null;
+        onDone?.();
       };
       audio.onerror = () => {
         setIsSpeaking(false);
@@ -164,8 +181,10 @@ export default function Home() {
         audioRef.current = null;
       };
       await audio.play();
+      return true;
     } catch (e) {
       if (e?.name !== "AbortError") setIsSpeaking(false);
+      return false;
     }
   }, [ttsSpeed, voiceType]);
 
@@ -662,6 +681,7 @@ export default function Home() {
   }, [speak]);
 
   const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
+  const isLongLoadingCandidate = isMedicineOcrLoading || isMedicineSafetyLoading || isHospitalLoading;
 
   return (
     <div className={`min-h-screen bg-white text-boyak-ink font-size-${fontSizeLevel}`}>
@@ -727,7 +747,7 @@ export default function Home() {
             : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
         }
       >
-        {view === "home" && <HomeSection onNavigate={setView} onSpeak={speak} />}
+        {view === "home" && <HomeSection onNavigate={setView} onSpeak={speak} voiceGuideStyle={voiceGuideStyle} />}
 
         {view === "settings" && (
           <SettingsScreen
@@ -808,11 +828,124 @@ export default function Home() {
           />
         )}
       </main>
+
+      <LongLoadingDoctorTip
+        isActive={isLongLoadingCandidate}
+        voiceGuideStyle={voiceGuideStyle}
+        onSpeak={speak}
+      />
     </div>
   );
 }
 
-function HomeSection({ onNavigate, onSpeak }) {
+function LongLoadingDoctorTip({ isActive, voiceGuideStyle, onSpeak }) {
+  const [tipIndex, setTipIndex] = useState(null);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [needsManualPlay, setNeedsManualPlay] = useState(false);
+  const isActiveRef = useRef(isActive);
+  const isDismissedRef = useRef(isDismissed);
+
+  useEffect(() => {
+    isActiveRef.current = isActive;
+  }, [isActive]);
+
+  useEffect(() => {
+    isDismissedRef.current = isDismissed;
+  }, [isDismissed]);
+
+  useEffect(() => {
+    if (!isActive) {
+      setTipIndex(null);
+      setIsDismissed(false);
+      setNeedsManualPlay(false);
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setTipIndex(Math.floor(Math.random() * doctorTips.length));
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [isActive]);
+
+  useEffect(() => {
+    if (tipIndex === null || isDismissed) return;
+    const tip = doctorTips[tipIndex];
+    const message = voiceGuideStyle === "simple" ? tip.summary : tip.detail;
+    setNeedsManualPlay(false);
+    onSpeak(message, {
+      onDone: () => {
+        if (!isActiveRef.current || isDismissedRef.current) return;
+        setTipIndex((current) => {
+          const base = current ?? tipIndex;
+          return (base + 1) % doctorTips.length;
+        });
+      },
+    }).then((didStart) => {
+      if (!didStart && isActiveRef.current && !isDismissedRef.current) {
+        setNeedsManualPlay(true);
+      }
+    });
+  }, [tipIndex, isDismissed, voiceGuideStyle, onSpeak]);
+
+  if (!isActive || isDismissed || tipIndex === null) return null;
+
+  const tip = doctorTips[tipIndex];
+  const visibleText = voiceGuideStyle === "simple" ? tip.summary : tip.detail;
+  const playCurrentTip = () => {
+    setNeedsManualPlay(false);
+    onSpeak(visibleText, {
+      onDone: () => {
+        if (!isActiveRef.current || isDismissedRef.current) return;
+        setTipIndex((current) => {
+          const base = current ?? tipIndex;
+          return (base + 1) % doctorTips.length;
+        });
+      },
+    }).then((didStart) => {
+      if (!didStart && isActiveRef.current && !isDismissedRef.current) {
+        setNeedsManualPlay(true);
+      }
+    });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-white/80 px-5 py-8 backdrop-blur-sm"
+      aria-live="polite"
+    >
+      <aside className="relative w-full max-w-[720px] rounded-[28px] border-2 border-[#C8DAF7] bg-[#EDF4FF] p-7 text-center shadow-soft sm:p-10">
+        <button
+          className="absolute right-4 top-4 grid size-12 place-items-center rounded-full bg-white text-3xl font-black text-boyak-muted shadow-sm transition hover:text-boyak-ink"
+          type="button"
+          aria-label="약손 박사의 한마디 닫기"
+          onClick={() => setIsDismissed(true)}
+        >
+          ×
+        </button>
+        <div className="mx-auto mb-5 grid size-24 place-items-center rounded-full bg-white text-6xl shadow-sm sm:size-28">
+          👨‍⚕️
+        </div>
+        <p className="mb-3 text-xl font-black text-boyak-blue sm:text-2xl">기다리는 동안 약손 박사의 한마디</p>
+        <p className="text-3xl font-black leading-relaxed text-boyak-ink sm:text-4xl">약손 박사가 알려드려요</p>
+        <p className="mt-5 text-2xl font-extrabold leading-relaxed text-boyak-muted sm:text-3xl">
+          {visibleText}
+        </p>
+        {needsManualPlay && (
+          <button
+            className="mt-6 min-h-16 rounded-2xl bg-boyak-blue px-8 text-xl font-black text-white shadow-sm sm:text-2xl"
+            type="button"
+            onClick={playCurrentTip}
+          >
+            음성으로 듣기
+          </button>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function HomeSection({ onNavigate, onSpeak, voiceGuideStyle }) {
   const [tipIdx, setTipIdx] = useState(0);
   useEffect(() => {
     setTipIdx(Math.floor(Math.random() * doctorTips.length));
@@ -857,7 +990,7 @@ function HomeSection({ onNavigate, onSpeak }) {
         <button
           className="min-h-14 shrink-0 rounded-lg bg-boyak-blue px-6 text-lg font-black text-white sm:text-xl lg:min-h-[64px] lg:px-9"
           type="button"
-          onClick={() => onSpeak(tip.detail)}
+          onClick={() => onSpeak(voiceGuideStyle === "simple" ? tip.summary : tip.detail)}
         >
           자세히 듣기
         </button>
