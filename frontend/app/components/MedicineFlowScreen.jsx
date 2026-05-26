@@ -15,12 +15,11 @@ import {
   ShieldCheck,
   Sparkles,
   Thermometer,
-  Volume2,
 } from "lucide-react";
 
 const MEDICINE_ICON_MAP = { Thermometer, Leaf, Bone, Heart, Droplets, Sparkles };
 
-import { homeMedicines, medicineSteps, medicineStepKeys } from "../constants";
+import { homeMedicines, medicineSteps } from "../constants";
 import BackButton from "./BackButton";
 import StepHeader from "./StepHeader";
 import FlowPanel from "./FlowPanel";
@@ -55,7 +54,6 @@ function MedicineFlowScreen({
   onStepChange,
   onHerbalChange,
   onAgeChange,
-  onSpeak,
 }) {
   const visibleStepMap = { capture: 0, ocr: 0, review: 0, add: 1, herbal: 2, dur: 3, result: 3 };
   const currentIndex = visibleStepMap[step] ?? 0;
@@ -92,25 +90,20 @@ function MedicineFlowScreen({
       {/* Desktop step bar */}
       <div className="mb-8 hidden gap-3 md:grid md:grid-cols-4 lg:mb-3 lg:gap-2 xl:grid-cols-7" aria-label="약 복용 안전 확인 단계">
         {medicineSteps.map((label, index) => (
-          <button
+          <div
             key={label}
             className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
               index <= currentIndex
                 ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
-            type="button"
-            onClick={() => {
-                const key = medicineStepKeys[index];
-                if (key === "herbal") { onAgeChange?.(""); onHerbalChange?.(null); }
-                onStepChange(key);
-              }}
+            aria-current={index === currentIndex ? "step" : undefined}
           >
             <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-5 lg:text-xs">
               {index + 1}
             </span>
             {label}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -173,7 +166,6 @@ function MedicineFlowScreen({
                   name={name}
                   desc={isLoading ? "" : (info.desc || "")}
                   dosage={info.dosage || ""}
-                  onSpeak={onSpeak}
                 />
               );
             })}
@@ -302,7 +294,6 @@ function MedicineFlowScreen({
           normalizeItems={normalizeItems}
           hasHerbalMedicine={hasHerbalMedicine}
           selectedHomeMedicines={selectedHomeMedicines}
-          onSpeak={onSpeak}
           onRestart={() => onStepChange("capture")}
           onAddMore={() => onStepChange("add")}
         />
@@ -425,7 +416,7 @@ function parseDosageParts(dosage = "") {
   return parts;
 }
 
-function DrugCard({ name, desc, dosage, onSpeak }) {
+function DrugCard({ name, desc, dosage }) {
   const dosingParts = parseDosageParts(dosage);
 
   return (
@@ -436,11 +427,6 @@ function DrugCard({ name, desc, dosage, onSpeak }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
-          {onSpeak && (
-            <button type="button" onClick={() => onSpeak(desc ? `${name}. ${desc}` : name)} className="text-boyak-muted">
-              <Volume2 className="size-5" aria-hidden="true" />
-            </button>
-          )}
         </div>
         {desc
           ? <p className="mt-0.5 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>
@@ -467,7 +453,7 @@ const GUIDANCE = {
   unknown: "분석 결과를 확인하지 못했어요.\n약사 또는 의사 선생님께 직접 문의해 주세요.",
 };
 
-function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalMedicine, selectedHomeMedicines = [], onSpeak, onRestart, onAddMore }) {
+function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalMedicine, selectedHomeMedicines = [], onRestart, onAddMore }) {
   const notes = safetyResult?.notes || [];
   const alerts = safetyResult?.alerts || [];
   const hasDanger = alerts.some((a) => a.level === "danger");
@@ -490,20 +476,11 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
   const hasHerbal = hasHerbalMedicine === true;
 
   const drugSummary = allDrugNames.join(" · ") + (hasHerbal ? " + 한약" : "");
-  const ttsAll = `${dur.label}. ${guidance.replace("\n", " ")}`;
-
   return (
     <div className="flex flex-col gap-4">
       {/* 헤더 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-black text-boyak-ink">약 복용 안전 확인 결과</h2>
-        <button
-          className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-boyak-line bg-white px-4 py-2 text-base font-black"
-          type="button"
-          onClick={() => onSpeak?.(ttsAll)}
-        >
-          <Volume2 className="size-5" /> 전체 읽어주기
-        </button>
       </div>
 
       {/* 분석한 약 요약 */}

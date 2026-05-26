@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useRef, useState } from "react";
-import { Mic, Send, Volume2 } from "lucide-react";
+import { Mic, Send } from "lucide-react";
 
 import {
   API_BASE_URL,
@@ -161,14 +161,6 @@ function CostEstimateScreen({
         <h1 id="cost-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
           병원비 예상 비용 확인 흐름
         </h1>
-        <button
-          className="ml-auto grid size-16 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="병원비 화면 음성 안내 듣기"
-          onClick={onSpeak}
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
       </div>
 
       {/* Mobile step indicator */}
@@ -182,21 +174,20 @@ function CostEstimateScreen({
       {/* Desktop step bar */}
       <div className="mb-8 hidden gap-3 md:grid md:grid-cols-4 lg:mb-3 lg:gap-2" aria-label="병원비 확인 단계">
         {costFlowSteps.map((label, index) => (
-          <button
+          <div
             key={label}
             className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
               index <= currentIndex
                 ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
-            type="button"
-            onClick={() => onStepChange(costStepKeys[index])}
+            aria-current={index === currentIndex ? "step" : undefined}
           >
             <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-orange text-sm text-white lg:size-5 lg:text-xs">
               {index + 1}
             </span>
             {label}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -341,15 +332,7 @@ function CostEstimateScreen({
             <p className="mt-4 rounded-xl bg-[#F1F4FA] p-4 text-lg font-bold text-boyak-muted lg:p-3 lg:text-base">
               약국 약값, 주사, 추가 촬영, 야간/공휴일 가산은 별도예요.
             </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <button
-                className="inline-flex min-h-16 items-center justify-center gap-3 rounded-2xl bg-boyak-orange px-5 text-xl font-black text-white lg:min-h-14 lg:text-lg"
-                type="button"
-                onClick={onSpeak}
-              >
-                <Volume2 className="size-7 lg:size-6" aria-hidden="true" />
-                음성으로 듣기
-              </button>
+            <div className="mt-4 grid gap-3">
               <button
                 className="min-h-16 rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-14 lg:text-lg"
                 type="button"

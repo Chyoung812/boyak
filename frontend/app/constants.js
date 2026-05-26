@@ -5,13 +5,13 @@ export const featureCards = [
     id: "medicine",
     title: "약",
     copy: "약 복용 안전 확인",
-    color: "bg-boyak-blue",
+    color: "bg-boyak-green",
   },
   {
     id: "hospital",
     title: "길찾기",
     copy: "가까운 병원 찾기",
-    color: "bg-boyak-green",
+    color: "bg-boyak-blue",
   },
   {
     id: "cost",

@@ -686,16 +686,18 @@ export default function Home() {
       </button>
 
       {/* Header */}
-      <header className="flex min-h-20 flex-wrap items-center justify-between gap-3 border-b-[3px] border-boyak-blue px-5 py-3 sm:min-h-24 sm:px-10 lg:min-h-[72px] lg:px-20 lg:py-2 xl:px-24">
+      <header className="flex min-h-28 flex-wrap items-center justify-between gap-3 border-b-[3px] border-boyak-blue px-5 py-3 sm:min-h-36 sm:px-10 lg:min-h-28 lg:px-20 lg:py-3 xl:px-24">
         <button
-          className="inline-flex min-h-10 items-center gap-3 text-xl font-extrabold text-boyak-blue sm:text-2xl lg:min-h-9 lg:text-xl"
+          className="inline-flex min-h-10 items-center"
           type="button"
           onClick={goHome}
+          aria-label="보약 홈으로 이동"
         >
-          <span className="grid size-9 place-items-center rounded-lg bg-boyak-blue text-2xl text-white sm:size-11 sm:text-3xl lg:size-9 lg:text-2xl">
-            +
-          </span>
-          보약
+          <img
+            src="/logo.png"
+            alt="보약"
+            className="h-24 w-auto object-contain sm:h-32 lg:h-24"
+          />
         </button>
         <nav className="flex items-center justify-end gap-2 sm:gap-4" aria-label="상단 메뉴">
           <button
