@@ -923,8 +923,12 @@ function LongLoadingDoctorTip({ isActive, voiceGuideStyle, onSpeak }) {
         >
           ×
         </button>
-        <div className="mx-auto mb-5 grid size-24 place-items-center rounded-full bg-white text-6xl shadow-sm sm:size-28">
-          👨‍⚕️
+        <div className="mx-auto mb-5 grid size-48 place-items-center overflow-hidden rounded-full bg-white shadow-sm sm:size-56">
+          <img
+            src="/doctor.png"
+            alt="약손 박사"
+            className="size-full object-cover"
+          />
         </div>
         <p className="mb-3 text-xl font-black text-boyak-blue sm:text-2xl">기다리는 동안 약손 박사의 한마디</p>
         <p className="text-3xl font-black leading-relaxed text-boyak-ink sm:text-4xl">약손 박사가 알려드려요</p>
