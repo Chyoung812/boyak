@@ -1,6 +1,4 @@
-import { Volume2 } from "lucide-react";
-
-export default function FlowPanel({ icon, title, body, primaryLabel, onPrimary, onSpeak }) {
+export default function FlowPanel({ icon, title, body, primaryLabel, onPrimary }) {
   return (
     <div className="flex flex-col items-center gap-6 rounded-[28px] border-2 border-boyak-line bg-white p-8 text-center shadow-sm lg:p-6 lg:gap-4">
       {icon && <div aria-hidden="true">{icon}</div>}
@@ -18,17 +16,6 @@ export default function FlowPanel({ icon, title, body, primaryLabel, onPrimary, 
             className="w-full rounded-2xl bg-boyak-ink py-4 text-xl font-black text-white hover:opacity-90 transition-opacity lg:py-3 lg:text-base"
           >
             {primaryLabel}
-          </button>
-        )}
-        {onSpeak && (
-          <button
-            type="button"
-            onClick={onSpeak}
-            className="flex items-center justify-center gap-2 w-full rounded-2xl border-2 border-boyak-line py-3 text-lg font-black text-boyak-muted hover:text-boyak-ink transition-colors lg:py-2 lg:text-sm"
-            aria-label="음성으로 듣기"
-          >
-            <Volume2 className="size-5" aria-hidden="true" />
-            음성 안내
           </button>
         )}
       </div>

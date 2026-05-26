@@ -7,7 +7,6 @@ import {
   MapPin,
   Mic,
   Navigation,
-  Volume2,
   Star,
 } from "lucide-react";
 
@@ -56,16 +55,6 @@ function HospitalFlowScreen({
         <h1 id="hospital-flow-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
           길찾기 병원·약국 추천 흐름
         </h1>
-        <button
-          className="ml-auto grid size-16 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="길찾기 흐름 음성 안내 듣기"
-          onClick={() =>
-            onSpeak("증상을 말하거나 선택하면 진료과를 추천하고, 계단이 없는 평지 경로 위주로 가까운 병원을 안내합니다.")
-          }
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
       </div>
 
       {/* Mobile step indicator */}
@@ -79,21 +68,20 @@ function HospitalFlowScreen({
       {/* Desktop step bar */}
       <div className="mb-8 hidden gap-3 md:grid md:grid-cols-5 lg:mb-3 lg:gap-2" aria-label="길찾기 단계">
         {hospitalFlowSteps.map((label, index) => (
-          <button
+          <div
             key={label}
             className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
               index <= currentIndex
                 ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
-            type="button"
-            onClick={() => onStepChange(hospitalStepKeys[index])}
+            aria-current={index === currentIndex ? "step" : undefined}
           >
             <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-green text-sm text-white lg:size-5 lg:text-xs">
               {index + 1}
             </span>
             {label}
-          </button>
+          </div>
         ))}
       </div>
 
@@ -112,11 +100,6 @@ function HospitalFlowScreen({
           symptom={selectedSymptom}
           department={recommendedDepartment}
           onSelectHospital={onSelectHospital}
-          onSpeak={() =>
-            onSpeak(
-              `${selectedSymptom ?? "입력한 증상"}에는 ${recommendedDepartment}를 추천합니다. 계단이 없는 평지 경로 위주로 가장 가기 편한 병원을 첫 번째로 보여드려요.`
-            )
-          }
         />
       )}
 
@@ -135,7 +118,6 @@ function HospitalFlowScreen({
           body="도착 안내와 함께 길안내 만족도를 남길 수 있는 화면입니다."
           primaryLabel="처음으로"
           onPrimary={onGoHome ?? onBack}
-          onSpeak={() => onSpeak("목적지에 도착했어요. 길안내가 편했는지 평가해주세요.")}
         />
       )}
     </section>
@@ -288,14 +270,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
         <h2 className="text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
           어디가 불편하신가요?
         </h2>
-        <button
-          className="grid size-16 shrink-0 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="안내 듣기"
-          onClick={() => onSpeak("어디가 불편하신가요? 말하기 버튼을 누르고 자유롭게 말씀해 주세요.")}
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
       </div>
 
       {/* 큰 말하기 버튼 */}
@@ -349,7 +323,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 }
 
 // ─── 병원 결과 패널 ────────────────────────────────────────────────────────────
-function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSelectHospital, onSpeak }) {
+function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSelectHospital }) {
   return (
     <div className="mx-auto max-w-[720px] rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:max-w-none lg:px-5 lg:py-5">
       <div className="mb-8 flex items-start justify-between gap-4 lg:mb-4 lg:gap-3">
@@ -366,14 +340,6 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
               : "계단이 적고 거리 짧은 순으로 정렬했어요."}
           </p>
         </div>
-        <button
-          className="grid size-16 shrink-0 place-items-center rounded-full text-boyak-ink lg:size-11"
-          type="button"
-          aria-label="추천 병원 음성으로 듣기"
-          onClick={onSpeak}
-        >
-          <Volume2 className="size-11 lg:size-8" strokeWidth={2.3} aria-hidden="true" />
-        </button>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-3">
@@ -449,11 +415,6 @@ function HospitalSelectPanel({ hospital, onStepChange, onSpeak }) {
       <StepHeader
         icon={<Building2 className="size-12 text-boyak-green" />}
         title="병원을 선택했어요"
-        onSpeak={() =>
-          onSpeak(
-            `${hospital.name} 상세 정보입니다. ${hospital.route}이며 계단 ${hospital.stairs ?? 0}개 경로예요.`
-          )
-        }
       />
       <article className="rounded-3xl border-2 border-[#30343B] bg-white p-7 lg:p-5">
         <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">{hospital.department}</p>

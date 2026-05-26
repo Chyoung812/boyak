@@ -13,6 +13,7 @@ body {
   color: #111827;
 }
 
+.font-size-large .text-xs { font-size: 0.84rem !important; }
 .font-size-large .text-sm { font-size: 0.98rem !important; }
 .font-size-large .text-base { font-size: 1.12rem !important; }
 .font-size-large .text-lg { font-size: 1.26rem !important; }
@@ -20,7 +21,9 @@ body {
 .font-size-large .text-2xl { font-size: 1.68rem !important; }
 .font-size-large .text-3xl { font-size: 2.1rem !important; }
 .font-size-large .text-4xl { font-size: 2.52rem !important; }
+.font-size-large .text-5xl { font-size: 3.36rem !important; }
 
+.font-size-xlarge .text-xs { font-size: 0.93rem !important; }
 .font-size-xlarge .text-sm { font-size: 1.08rem !important; }
 .font-size-xlarge .text-base { font-size: 1.24rem !important; }
 .font-size-xlarge .text-lg { font-size: 1.4rem !important; }
@@ -28,3 +31,48 @@ body {
 .font-size-xlarge .text-2xl { font-size: 1.86rem !important; }
 .font-size-xlarge .text-3xl { font-size: 2.32rem !important; }
 .font-size-xlarge .text-4xl { font-size: 2.8rem !important; }
+.font-size-xlarge .text-5xl { font-size: 3.7rem !important; }
+
+@media (min-width: 640px) {
+  .font-size-large .sm\:text-xs { font-size: 0.84rem !important; }
+  .font-size-large .sm\:text-sm { font-size: 0.98rem !important; }
+  .font-size-large .sm\:text-base { font-size: 1.12rem !important; }
+  .font-size-large .sm\:text-lg { font-size: 1.26rem !important; }
+  .font-size-large .sm\:text-xl { font-size: 1.4rem !important; }
+  .font-size-large .sm\:text-2xl { font-size: 1.68rem !important; }
+  .font-size-large .sm\:text-3xl { font-size: 2.1rem !important; }
+  .font-size-large .sm\:text-4xl { font-size: 2.52rem !important; }
+  .font-size-large .sm\:text-5xl { font-size: 3.36rem !important; }
+
+  .font-size-xlarge .sm\:text-xs { font-size: 0.93rem !important; }
+  .font-size-xlarge .sm\:text-sm { font-size: 1.08rem !important; }
+  .font-size-xlarge .sm\:text-base { font-size: 1.24rem !important; }
+  .font-size-xlarge .sm\:text-lg { font-size: 1.4rem !important; }
+  .font-size-xlarge .sm\:text-xl { font-size: 1.55rem !important; }
+  .font-size-xlarge .sm\:text-2xl { font-size: 1.86rem !important; }
+  .font-size-xlarge .sm\:text-3xl { font-size: 2.32rem !important; }
+  .font-size-xlarge .sm\:text-4xl { font-size: 2.8rem !important; }
+  .font-size-xlarge .sm\:text-5xl { font-size: 3.7rem !important; }
+}
+
+@media (min-width: 1024px) {
+  .font-size-large .lg\:text-xs { font-size: 0.84rem !important; }
+  .font-size-large .lg\:text-sm { font-size: 0.98rem !important; }
+  .font-size-large .lg\:text-base { font-size: 1.12rem !important; }
+  .font-size-large .lg\:text-lg { font-size: 1.26rem !important; }
+  .font-size-large .lg\:text-xl { font-size: 1.4rem !important; }
+  .font-size-large .lg\:text-2xl { font-size: 1.68rem !important; }
+  .font-size-large .lg\:text-3xl { font-size: 2.1rem !important; }
+  .font-size-large .lg\:text-4xl { font-size: 2.52rem !important; }
+  .font-size-large .lg\:text-5xl { font-size: 3.36rem !important; }
+
+  .font-size-xlarge .lg\:text-xs { font-size: 0.93rem !important; }
+  .font-size-xlarge .lg\:text-sm { font-size: 1.08rem !important; }
+  .font-size-xlarge .lg\:text-base { font-size: 1.24rem !important; }
+  .font-size-xlarge .lg\:text-lg { font-size: 1.4rem !important; }
+  .font-size-xlarge .lg\:text-xl { font-size: 1.55rem !important; }
+  .font-size-xlarge .lg\:text-2xl { font-size: 1.86rem !important; }
+  .font-size-xlarge .lg\:text-3xl { font-size: 2.32rem !important; }
+  .font-size-xlarge .lg\:text-4xl { font-size: 2.8rem !important; }
+  .font-size-xlarge .lg\:text-5xl { font-size: 3.7rem !important; }
+}
