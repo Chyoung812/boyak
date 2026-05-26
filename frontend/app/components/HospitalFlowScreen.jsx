@@ -34,6 +34,7 @@ function HospitalFlowScreen({
   department = "",
   isLoading = false,
   onBack,
+  onGoHome,
   onStepChange,
   onSelectSymptom,
   onSelectHospital,
@@ -133,7 +134,7 @@ function HospitalFlowScreen({
           title="도착했어요"
           body="도착 안내와 함께 길안내 만족도를 남길 수 있는 화면입니다."
           primaryLabel="처음으로"
-          onPrimary={onBack}
+          onPrimary={onGoHome ?? onBack}
           onSpeak={() => onSpeak("목적지에 도착했어요. 길안내가 편했는지 평가해주세요.")}
         />
       )}
@@ -226,7 +227,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
           const data = await res.json();
           if (data.ok && data.text) {
             setTranscript(data.text);
-            setVoicePhase("confirm");
+            onSelect(data.text);
           } else {
             onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
           }
@@ -241,7 +242,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
     } catch (e) {
       onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
     }
-  }, [voicePhase, onSpeak]);
+  }, [voicePhase, onSpeak, onSelect]);
 
   const handleConfirm = () => onSelect(transcript);
   const handleRetry = () => {

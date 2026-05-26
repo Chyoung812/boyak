@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import time
 from typing import Any, List, Optional
@@ -6,6 +7,8 @@ from urllib.parse import quote
 
 import httpx
 from fastapi import FastAPI, File, Query, Request, UploadFile
+from fastapi.responses import Response
+from gtts import gTTS
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -420,6 +423,18 @@ async def hospital_nearby(request: Request, payload: HospitalNearbyRequest) -> d
         dept, lat, lon, len(h_list), best["name"], best["stairs"], best["distance"],
     )
     return {"hospitals": h_list}
+
+
+class TTSRequest(BaseModel):
+    text: str
+    slow: bool = False
+
+
+@app.post("/api/tts")
+async def tts(payload: TTSRequest) -> Response:
+    buf = io.BytesIO()
+    gTTS(text=payload.text[:1000], lang="ko", slow=payload.slow).write_to_fp(buf)
+    return Response(content=buf.getvalue(), media_type="audio/mpeg")
 
 
 @app.get("/api/hospitals/recommend")

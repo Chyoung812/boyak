@@ -22,18 +22,53 @@ import BackButton from "./components/BackButton";
 
 const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
 
-function getPreferredKoreanVoice() {
-  if (!("speechSynthesis" in window)) return null;
-
-  const voices = window.speechSynthesis.getVoices();
-  const koreanVoices = voices.filter((voice) => voice.lang?.toLowerCase().startsWith("ko"));
-  return (
-    koreanVoices.find((voice) => /yuna|sora|female|premium|enhanced/i.test(voice.name)) ||
-    koreanVoices.find((voice) => /google|microsoft|apple/i.test(voice.name)) ||
-    koreanVoices[0] ||
-    null
-  );
-}
+const STATIC_AUDIO = {
+  // home
+  "약 복용 안전 확인, 병원 길찾기, 병원비 예상 중 필요한 기능을 선택해주세요.": "/audio/home_friendly.wav",
+  "필요한 기능을 선택해주세요.": "/audio/home_simple.wav",
+  // medicine - capture
+  "약 봉투나 처방전 사진을 촬영해주세요. 여러 장이 있으면 모두 추가한 뒤 분석 버튼을 누르면 됩니다.": "/audio/medicine_capture_friendly.wav",
+  "약 봉투나 처방전 사진을 촬영해주세요.": "/audio/medicine_capture_simple.wav",
+  // medicine - ocr
+  "사진에서 약 이름과 조제 정보를 읽는 중이에요. 잠시만 기다려주세요.": "/audio/medicine_ocr.wav",
+  // medicine - review
+  "인식된 약 이름과 후보를 확인해주세요. 같은 성분으로 확인된 약은 자동 선택되어 있고, 후보가 여러 개면 맞는 약을 골라주세요.": "/audio/medicine_review_friendly.wav",
+  "인식된 약 후보가 맞는지 확인해주세요.": "/audio/medicine_review_simple.wav",
+  // medicine - add
+  "집에 있는 감기약, 소화제, 영양제도 함께 확인하려면 선택해주세요. 없으면 추가 없이 계속 진행하면 됩니다.": "/audio/medicine_add_friendly.wav",
+  "집에 있는 다른 약이 있으면 선택해주세요.": "/audio/medicine_add_simple.wav",
+  // medicine - herbal
+  "복용하시는 분의 나이를 입력하고, 한약을 함께 드시는지 선택해주세요. 이 정보로 주의해야 할 약을 더 정확히 확인합니다.": "/audio/medicine_herbal_friendly.wav",
+  "나이와 한약 복용 여부를 선택해주세요.": "/audio/medicine_herbal_simple.wav",
+  // medicine - dur
+  "선택한 약들을 기준으로 함께 먹으면 안 되는 조합이나 나이에 주의가 필요한 약을 확인하는 중이에요.": "/audio/medicine_dur_friendly.wav",
+  "약 조합과 나이별 주의사항을 확인하는 중입니다.": "/audio/medicine_dur_simple.wav",
+  // medicine - result fallback
+  "DUR 분석 결과를 확인해주세요. 주의 문구가 있으면 약사나 의사에게 확인하세요.": "/audio/medicine_result_fallback_friendly.wav",
+  "DUR 분석 결과를 확인해주세요.": "/audio/medicine_result_fallback_simple.wav",
+  // hospital - input
+  "어디가 불편하신지 알려주세요. 부위 버튼을 누르거나, 말하기 버튼으로 증상을 말씀하시면 가까운 병원을 찾아드릴게요.": "/audio/hospital_input_friendly.wav",
+  "아픈 부위를 선택하거나 말하기 버튼으로 증상을 말씀해주세요.": "/audio/hospital_input_simple.wav",
+  // hospital - route (simple only; friendly has dynamic hospital name → gTTS)
+  "길안내 시작 버튼을 누르면 실시간 안내를 시작합니다.": "/audio/hospital_route_simple.wav",
+  // hospital - arrived
+  "목적지에 도착했어요. 수고하셨습니다. 길안내는 끝났고, 필요하면 처음으로 돌아가 다시 병원을 찾아볼 수 있어요.": "/audio/hospital_arrived_friendly.wav",
+  "목적지에 도착했어요. 길안내가 끝났습니다.": "/audio/hospital_arrived_simple.wav",
+  // cost - body
+  "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.": "/audio/cost_body_friendly.wav",
+  "병원비를 예상할 부위를 선택해주세요.": "/audio/cost_body_simple.wav",
+  // cost - chat
+  "추가로 궁금한 병원비를 물어볼 수 있는 화면이에요. 입력창에 질문을 쓰거나 음성 입력 버튼을 눌러 질문해보세요.": "/audio/cost_chat_friendly.wav",
+  "궁금한 병원비를 입력하거나 말해보세요.": "/audio/cost_chat_simple.wav",
+  // settings
+  "설정 화면입니다. 글자 크기는 보통, 크게, 아주 크게 중에서 고를 수 있고, 음성 안내 방식은 친절하게 또는 간단하게로 바꿀 수 있어요.": "/audio/settings_friendly.wav",
+  "글자 크기와 음성 안내 방식을 바꿀 수 있어요.": "/audio/settings_simple.wav",
+  // STT / mic
+  "목소리를 분석하고 있어요. 잠시만 기다려주세요.": "/audio/stt_analyzing.wav",
+  "음성 분석에 실패했어요. 다시 시도해 주세요.": "/audio/stt_fail.wav",
+  "서버 오류가 발생했어요. 다시 시도해 주세요.": "/audio/stt_error.wav",
+  "마이크 접근 권한이 없거나 지원하지 않는 기기입니다.": "/audio/mic_denied.wav",
+};
 
 export default function Home() {
   const [view, setView] = useState("home");
@@ -65,29 +100,74 @@ export default function Home() {
   const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 약 처방 가능");
   const [fontSizeLevel, setFontSizeLevel] = useState("normal");
   const [voiceGuideStyle, setVoiceGuideStyle] = useState("friendly");
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [ttsSpeed, setTtsSpeed] = useState("normal");
+  const [voiceType, setVoiceType] = useState("carat");
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
-
-  const speak = useCallback((message) => {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = "ko-KR";
-    const preferredVoice = getPreferredKoreanVoice();
-    if (preferredVoice) utterance.voice = preferredVoice;
-    utterance.rate = 0.84;
-    utterance.pitch = 0.95;
-    utterance.volume = 1;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-    window.speechSynthesis.speak(utterance);
-  }, []);
+  const audioRef = useRef(null);
+  const speakControllerRef = useRef(null);
 
   const stopSpeaking = useCallback(() => {
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    speakControllerRef.current?.abort();
+    speakControllerRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     setIsSpeaking(false);
   }, []);
+
+  const speak = useCallback(async (message) => {
+    if (!message?.trim()) return;
+    speakControllerRef.current?.abort();
+    speakControllerRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setIsSpeaking(true);
+
+    const staticPath = voiceType === "carat" && STATIC_AUDIO[message.trim()];
+    if (staticPath) {
+      const audio = new Audio(staticPath);
+      if (ttsSpeed === "slow") audio.playbackRate = 0.75;
+      audioRef.current = audio;
+      audio.onended = () => { setIsSpeaking(false); audioRef.current = null; };
+      audio.onerror = () => { setIsSpeaking(false); audioRef.current = null; };
+      audio.play().catch(() => setIsSpeaking(false));
+      return;
+    }
+
+    const controller = new AbortController();
+    speakControllerRef.current = controller;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: message, slow: ttsSpeed === "slow" }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error("TTS 요청 실패");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
+      audio.onerror = () => {
+        setIsSpeaking(false);
+        URL.revokeObjectURL(url);
+        audioRef.current = null;
+      };
+      await audio.play();
+    } catch (e) {
+      if (e?.name !== "AbortError") setIsSpeaking(false);
+    }
+  }, [ttsSpeed, voiceType]);
 
   const handleImage = useCallback((event) => {
     const files = Array.from(event.target.files ?? []);
@@ -141,6 +221,13 @@ export default function Home() {
     setSelectedHomeMedicines([]);
     setCostStep("body");
   }, [stopSpeaking]);
+
+  // 화면이 바뀔 때마다 voiceEnabled 상태면 자동으로 음성 안내
+  useEffect(() => {
+    if (!voiceEnabled) return;
+    speak(getGlobalVoiceGuide());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, medicineStep, hospitalStep, costStep, voiceEnabled]);
 
   const getGlobalVoiceGuide = useCallback(() => {
     const isSimpleVoice = voiceGuideStyle === "simple";
@@ -578,18 +665,23 @@ export default function Home() {
 
   return (
     <div className={`min-h-screen bg-white text-boyak-ink font-size-${fontSizeLevel}`}>
-      {/* Global voice button — 말하는 중이면 빨간 X 버튼으로 토글 */}
+      {/* Global voice button: 빨강=재생 중 / 초록=자동안내 ON / 파랑=꺼짐 */}
       <button
         className={`fixed bottom-5 right-5 z-50 grid size-16 place-items-center rounded-full text-white shadow-soft transition active:scale-95 sm:bottom-7 sm:right-7 sm:size-20 lg:size-[72px] ${
-          isSpeaking ? "bg-red-500" : "bg-boyak-blue"
+          isSpeaking ? "bg-red-500" : voiceEnabled ? "bg-green-500" : "bg-boyak-blue"
         }`}
         type="button"
-        aria-label={isSpeaking ? "음성 끄기" : "현재 화면 음성 안내 듣기"}
-        onClick={isSpeaking ? stopSpeaking : () => speak(getGlobalVoiceGuide())}
+        aria-label={isSpeaking ? "음성 멈추기" : voiceEnabled ? "자동 음성 안내 끄기" : "자동 음성 안내 켜기"}
+        onClick={() => {
+          if (isSpeaking) { stopSpeaking(); return; }
+          setVoiceEnabled(v => !v);
+        }}
       >
         {isSpeaking
           ? <VolumeX className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
-          : <Volume2 className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
+          : voiceEnabled
+            ? <Volume2 className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
+            : <Volume1 className="size-9 sm:size-11" strokeWidth={2.6} aria-hidden="true" />
         }
       </button>
 
@@ -639,9 +731,13 @@ export default function Home() {
           <SettingsScreen
             fontSizeLevel={fontSizeLevel}
             voiceGuideStyle={voiceGuideStyle}
+            ttsSpeed={ttsSpeed}
+            voiceType={voiceType}
             onBack={goHome}
             onFontSizeChange={setFontSizeLevel}
             onVoiceGuideStyleChange={setVoiceGuideStyle}
+            onTtsSpeedChange={setTtsSpeed}
+            onVoiceTypeChange={setVoiceType}
           />
         )}
 
@@ -687,6 +783,7 @@ export default function Home() {
             department={hospitalDepartment}
             isLoading={isHospitalLoading}
             onBack={handleHospitalBack}
+            onGoHome={goHome}
             onRestart={handleHospitalRestart}
             onStepChange={handleHospitalStepChange}
             onSelectSymptom={handleSelectSymptom}
@@ -786,12 +883,26 @@ const voiceGuideOptions = [
   },
 ];
 
+const ttsSpeedOptions = [
+  { id: "normal", label: "일반 속도", description: "기본 속도로 또렷하게 안내해요." },
+  { id: "slow", label: "천천히", description: "한 단어씩 천천히 안내해요. 듣기 편해요." },
+];
+
+const voiceTypeOptions = [
+  { id: "carat", label: "캐럿 음성", description: "미리 녹음된 자연스러운 목소리로 안내해요." },
+  { id: "gtts", label: "기본 음성", description: "구글 TTS로 모든 화면을 실시간 합성해요." },
+];
+
 function SettingsScreen({
   fontSizeLevel,
   voiceGuideStyle,
+  ttsSpeed,
+  voiceType,
   onBack,
   onFontSizeChange,
   onVoiceGuideStyleChange,
+  onTtsSpeedChange,
+  onVoiceTypeChange,
 }) {
   return (
     <section className="mx-auto max-w-[860px]" aria-labelledby="settings-title">
@@ -867,6 +978,72 @@ function SettingsScreen({
                       : "border-boyak-line bg-white text-boyak-ink"
                   }`}
                   onClick={() => onVoiceGuideStyleChange(option.id)}
+                >
+                  <span className="block text-2xl font-black lg:text-xl">{option.label}</span>
+                  <span className="mt-2 block text-lg font-bold leading-relaxed text-boyak-muted lg:text-base">
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5" aria-labelledby="tts-speed-title">
+          <div className="mb-5 flex items-center gap-3">
+            <Volume2 className="size-8 text-boyak-blue lg:size-7" strokeWidth={2.4} aria-hidden="true" />
+            <h2 id="tts-speed-title" className="text-2xl font-black lg:text-xl">
+              음성 속도
+            </h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="음성 속도 선택">
+            {ttsSpeedOptions.map((option) => {
+              const isSelected = ttsSpeed === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  className={`min-h-32 rounded-2xl border-2 px-5 py-4 text-left transition active:scale-[0.98] lg:min-h-24 ${
+                    isSelected
+                      ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
+                      : "border-boyak-line bg-white text-boyak-ink"
+                  }`}
+                  onClick={() => onTtsSpeedChange(option.id)}
+                >
+                  <span className="block text-2xl font-black lg:text-xl">{option.label}</span>
+                  <span className="mt-2 block text-lg font-bold leading-relaxed text-boyak-muted lg:text-base">
+                    {option.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5" aria-labelledby="voice-type-title">
+          <div className="mb-5 flex items-center gap-3">
+            <Volume2 className="size-8 text-boyak-blue lg:size-7" strokeWidth={2.4} aria-hidden="true" />
+            <h2 id="voice-type-title" className="text-2xl font-black lg:text-xl">
+              음성 종류
+            </h2>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="음성 종류 선택">
+            {voiceTypeOptions.map((option) => {
+              const isSelected = voiceType === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  className={`min-h-32 rounded-2xl border-2 px-5 py-4 text-left transition active:scale-[0.98] lg:min-h-24 ${
+                    isSelected
+                      ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
+                      : "border-boyak-line bg-white text-boyak-ink"
+                  }`}
+                  onClick={() => onVoiceTypeChange(option.id)}
                 >
                   <span className="block text-2xl font-black lg:text-xl">{option.label}</span>
                   <span className="mt-2 block text-lg font-bold leading-relaxed text-boyak-muted lg:text-base">
