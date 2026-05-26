@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const TMAP_KEY = process.env.NEXT_PUBLIC_TMAP_KEY;
 
-export default function NavigationMap({ hospital, onArrive, onSpeak }) {
+export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationChange, relocatedHospitals = [], isRelocatingHospital = false, onRelocatedHospitalSelect }) {
+  const [isMapExpanded, setIsMapExpanded] = useState(false);
+
   // ── 출발지 상태 ──
   const [userLoc, setUserLoc] = useState(null);   // null = 위치 확인 중
   const [isLocating, setIsLocating] = useState(true);
@@ -218,6 +220,15 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
     );
   }, [hospital, onSpeak, onArrive, userLoc]);
 
+  const stopTracking = useCallback(() => {
+    if (watchIdRef.current) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsTracking(false);
+    setInstruction(stepsRef.current.length > 0 ? stepsRef.current[0].description : "안내 시작 버튼을 눌러 GPS 추적을 시작하세요.");
+  }, []);
+
   useEffect(() => {
     return () => {
       if (watchIdRef.current) navigator.geolocation.clearWatch(watchIdRef.current);
@@ -244,6 +255,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
         setUserLoc(newLoc);   // 지도 effect 재실행됨
         setShowAddressInput(false);
         setAddressInput("");
+        onLocationChange?.(newLoc);
       } else {
         alert("주소를 찾을 수 없어요. 다시 입력해 주세요.");
       }
@@ -265,6 +277,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
         setLocLabel("현재 위치 (GPS)");
         setIsLocating(false);
         setShowAddressInput(false);
+        onLocationChange?.(loc);
       },
       () => {
         setLocLabel("GPS 실패");
@@ -274,8 +287,21 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
     );
   }, []);
 
+  // 확대 시 Leaflet 지도 크기 재계산
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const timer = setTimeout(() => mapRef.current?.invalidateSize(), 50);
+    return () => clearTimeout(timer);
+  }, [isMapExpanded]);
+
+  const wrapperClass = isMapExpanded
+    ? "fixed inset-2 z-[9999] flex flex-col overflow-hidden rounded-[24px] border-2 border-boyak-line bg-white shadow-2xl"
+    : "mx-auto max-w-[560px] overflow-hidden rounded-[30px] border-2 border-boyak-line bg-white shadow-soft lg:max-w-[760px]";
+
+  const mapHeightClass = isMapExpanded ? "flex-1 min-h-0" : "h-[320px] lg:h-[180px]";
+
   return (
-    <div className="mx-auto max-w-[560px] overflow-hidden rounded-[30px] border-2 border-boyak-line bg-white shadow-soft lg:max-w-[760px]">
+    <div className={wrapperClass}>
       {/* 안내 바 */}
       <div className="flex items-center gap-4 bg-[#004D40] px-6 py-5 text-white lg:px-4 lg:py-3">
         <div className="grid size-16 shrink-0 place-items-center rounded-full bg-[#00796B] text-3xl lg:size-12 lg:text-xl">
@@ -347,20 +373,59 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
           <p className="text-xl font-bold text-boyak-muted">{routeError}</p>
         </div>
       ) : (
-        <div ref={mapDivRef} className="h-[320px] w-full lg:h-[180px]" />
+        <div className={`relative w-full ${mapHeightClass}`}>
+          <div ref={mapDivRef} className="h-full w-full" />
+          {/* 확대/축소 토글 버튼 */}
+          {!isLocating && !isRelocatingHospital && relocatedHospitals.length === 0 && (
+            <button
+              type="button"
+              aria-label={isMapExpanded ? "지도 축소" : "지도 확대"}
+              className="absolute bottom-3 right-3 z-[400] flex items-center gap-1 rounded-lg bg-white/90 px-3 py-2 text-sm font-black text-boyak-ink shadow-md backdrop-blur-sm transition hover:bg-white"
+              onClick={() => setIsMapExpanded((v) => !v)}
+            >
+              {isMapExpanded ? "▼ 축소" : "▲ 확대"}
+            </button>
+          )}
+          {isLocating && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#EFF1F4]">
+              <div className="size-12 animate-spin rounded-full border-4 border-[#C8E6C9] border-t-boyak-green" aria-hidden="true" />
+              <p className="text-lg font-black text-boyak-muted">위치를 확인하는 중이에요...</p>
+            </div>
+          )}
+          {(isRelocatingHospital || relocatedHospitals.length > 0) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-sm">
+              {isRelocatingHospital ? (
+                <>
+                  <div className="size-12 animate-spin rounded-full border-4 border-[#C8E6C9] border-t-boyak-green" aria-hidden="true" />
+                  <p className="text-lg font-black text-boyak-muted">근처 병원을 찾는 중이에요...</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-4xl">📍</p>
+                  <p className="text-xl font-black text-boyak-ink">아래에서 새 병원을 선택해주세요</p>
+                  <p className="text-base font-bold text-boyak-muted">선택하면 경로가 다시 안내됩니다</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       )}
 
       {/* 하단 카드 */}
       <div className="p-6 lg:p-4">
         <div className="mb-4 flex items-start justify-between gap-3 lg:mb-3">
           <div>
-            <p className="text-2xl font-black lg:text-xl">{hospital.name}</p>
+            <p className="text-2xl font-black lg:text-xl">
+              {(isRelocatingHospital || relocatedHospitals.length > 0) ? "병원을 다시 선택해주세요" : hospital.name}
+            </p>
             <p className="mt-1 text-lg font-bold text-boyak-muted lg:text-base">
-              {hospital.floor ? `${hospital.floor}까지` : ""} 안전한 길 안내 중
+              {(isRelocatingHospital || relocatedHospitals.length > 0)
+                ? "위치가 변경되었어요. 아래 목록에서 병원을 선택하세요"
+                : `${hospital.floor ? `${hospital.floor}까지` : ""} 안전한 길 안내 중`}
             </p>
           </div>
           <p className="shrink-0 text-xl font-black text-boyak-green lg:text-lg">
-            {routeInfo ? `예상 도보 ${routeInfo.totalTime}분` : isLocating ? "위치 확인 중" : "계산 중..."}
+            {(isRelocatingHospital || relocatedHospitals.length > 0) ? "" : routeInfo ? `예상 도보 ${routeInfo.totalTime}분` : isLocating ? "위치 확인 중" : "계산 중..."}
           </p>
         </div>
 
@@ -387,13 +452,55 @@ export default function NavigationMap({ hospital, onArrive, onSpeak }) {
               isTracking ? "bg-[#d32f2f]" : "bg-boyak-green"
             } disabled:opacity-40`}
             type="button"
-            onClick={isTracking ? onArrive : startTracking}
+            onClick={isTracking ? stopTracking : startTracking}
             disabled={!!routeError || isLocating}
           >
             {isLocating ? "위치 확인 중..." : isTracking ? "⏹ 안내 정지" : "🚀 길안내 시작"}
           </button>
         </div>
       </div>
+
+      {/* 위치 변경 후 근처 병원 선택 패널 */}
+      {(isRelocatingHospital || relocatedHospitals.length > 0) && (
+        <div className="border-t-2 border-boyak-line p-6 lg:p-4">
+          <p className="mb-4 text-xl font-black text-boyak-green lg:text-lg">
+            변경된 위치 근처 병원
+          </p>
+          {isRelocatingHospital ? (
+            <div className="flex items-center gap-3 py-4">
+              <div className="size-8 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-green" aria-hidden="true" />
+              <p className="text-lg font-bold text-boyak-muted">근처 병원을 찾는 중이에요...</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {relocatedHospitals.map((h) => (
+                <button
+                  key={h.name}
+                  type="button"
+                  className={`flex items-center justify-between rounded-2xl border-2 px-5 py-4 text-left transition active:scale-[0.98] ${
+                    h.recommendedForWalking ? "border-boyak-green bg-[#EDF9F1]" : "border-[#30343B] bg-white"
+                  }`}
+                  onClick={() => onRelocatedHospitalSelect?.(h)}
+                >
+                  <div>
+                    <p className="text-xl font-black lg:text-base">{h.name}</p>
+                    <p className="mt-1 text-base font-bold text-boyak-muted lg:text-sm">
+                      {h.walk} · {h.route}
+                      {h.isFlat ? " · 계단 없음" : h.stairs > 0 ? ` · 계단 ${h.stairs}개` : ""}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-xl px-3 py-2 text-base font-black lg:text-sm ${
+                    h.recommendedForWalking ? "bg-boyak-green text-white" : "bg-[#F5F5F5] text-boyak-muted"
+                  }`}>
+                    선택
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
+

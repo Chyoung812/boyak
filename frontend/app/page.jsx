@@ -288,7 +288,7 @@ export default function Home() {
       return isSimpleVoice ? "약 복용 확인 화면입니다." : "약 복용 안전 확인을 진행하는 화면입니다.";
     }
     if (view === "hospital") {
-      const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
+      const displayHospitals = isHospitalLoading ? [] : (hospitals.length > 0 ? hospitals : nearbyHospitals);
       const selectedHospital = displayHospitals[hospitalIndex];
       const recommendedDepartment = hospitalDepartment || selectedHospital?.department || "정형외과";
 
@@ -629,6 +629,35 @@ export default function Home() {
     setHospitalStep("input");
   }, [stopSpeaking]);
 
+  const [relocatedHospitals, setRelocatedHospitals] = useState([]);
+  const [isRelocatingHospital, setIsRelocatingHospital] = useState(false);
+
+  const handleLocationChange = useCallback(async (newLoc) => {
+    if (!hospitalDepartment) return;
+    setIsRelocatingHospital(true);
+    setRelocatedHospitals([]);
+    try {
+      const nearbyRes = await fetch(`${API_BASE_URL}/api/hospitals/nearby`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ department: hospitalDepartment, lat: newLoc.lat, lon: newLoc.lon }),
+      });
+      const nearbyData = await nearbyRes.json();
+      const transformed = (nearbyData.hospitals || []).map((h) => transformHospital(h, hospitalDepartment));
+      setRelocatedHospitals(transformed);
+    } catch {
+      setRelocatedHospitals([]);
+    } finally {
+      setIsRelocatingHospital(false);
+    }
+  }, [hospitalDepartment, transformHospital]);
+
+  const handleRelocatedHospitalSelect = useCallback((selectedHospital) => {
+    setHospitals((prev) => [selectedHospital, ...prev.filter((h) => h.name !== selectedHospital.name)]);
+    setHospitalIndex(0);
+    setRelocatedHospitals([]);
+  }, []);
+
   const handleSelectBody = useCallback(
     (body) => {
       stopSpeaking();
@@ -680,7 +709,7 @@ export default function Home() {
     speak("궁금한 병원비를 말씀해주세요. 예를 들어, MRI도 건강보험이 되나요 라고 말할 수 있어요.");
   }, [speak]);
 
-  const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
+  const displayHospitals = isHospitalLoading ? [] : (hospitals.length > 0 ? hospitals : nearbyHospitals);
   const isLongLoadingCandidate = isMedicineOcrLoading || isMedicineSafetyLoading || isHospitalLoading;
 
   return (
@@ -811,6 +840,10 @@ export default function Home() {
             onSelectSymptom={handleSelectSymptom}
             onSelectHospital={handleSelectHospital}
             onSpeak={speak}
+            onLocationChange={handleLocationChange}
+            relocatedHospitals={relocatedHospitals}
+            isRelocatingHospital={isRelocatingHospital}
+            onRelocatedHospitalSelect={handleRelocatedHospitalSelect}
           />
         )}
 

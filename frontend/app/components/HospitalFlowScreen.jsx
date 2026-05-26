@@ -38,10 +38,14 @@ function HospitalFlowScreen({
   onSelectSymptom,
   onSelectHospital,
   onSpeak,
+  onLocationChange,
+  relocatedHospitals = [],
+  isRelocatingHospital = false,
+  onRelocatedHospitalSelect,
 }) {
   const currentIndex = hospitalStepKeys.indexOf(step);
   const currentStepLabel = hospitalFlowSteps[currentIndex] ?? hospitalFlowSteps[0];
-  const displayHospitals = hospitals.length > 0 ? hospitals : nearbyHospitals;
+  const displayHospitals = isLoading ? [] : (hospitals.length > 0 ? hospitals : nearbyHospitals);
   const recommendedDepartment =
     department || (selectedSymptom === "두통" ? "신경과 또는 가정의학과" : "정형외과 또는 통증의학과");
 
@@ -108,7 +112,15 @@ function HospitalFlowScreen({
       )}
 
       {step === "route" && (
-        <NavigationMap hospital={hospital} onArrive={() => onStepChange("arrived")} onSpeak={onSpeak} />
+        <NavigationMap
+          hospital={hospital}
+          onArrive={() => onStepChange("arrived")}
+          onSpeak={onSpeak}
+          onLocationChange={onLocationChange}
+          relocatedHospitals={relocatedHospitals}
+          isRelocatingHospital={isRelocatingHospital}
+          onRelocatedHospitalSelect={onRelocatedHospitalSelect}
+        />
       )}
 
       {step === "arrived" && (
@@ -342,8 +354,15 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
         </div>
       </div>
 
+      {isLoading && (
+        <div className="flex flex-col items-center justify-center gap-4 py-16">
+          <div className="size-14 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-green" aria-hidden="true" />
+          <p className="text-xl font-black text-boyak-muted">가까운 병원을 찾는 중이에요...</p>
+        </div>
+      )}
+
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-3">
-        {hospitals.map((h, index) => (
+        {!isLoading && hospitals.map((h, index) => (
           <article
             key={h.name}
             className={`rounded-3xl border-2 bg-white p-6 lg:p-4 ${
