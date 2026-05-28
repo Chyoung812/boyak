@@ -56,24 +56,24 @@ def _rule_based_route(text: str) -> Dict[str, Any]:
 
 
 async def transcribe_audio_with_ai(file) -> Dict[str, Any]:
-    """사용자 오디오 파일을 OpenAI Whisper API로 텍스트 변환."""
+    """사용자 오디오 파일을 Groq Whisper API로 텍스트 변환."""
     settings = get_settings()
 
-    if not settings.openai_api_key:
-        return {"ok": False, "reason": "OpenAI API 키가 설정되지 않았습니다."}
+    if not settings.groq_api_key:
+        return {"ok": False, "reason": "Groq API 키가 설정되지 않았습니다."}
 
     try:
         audio_content = await file.read()
         
         async with httpx.AsyncClient(timeout=30) as client:
             resp = await client.post(
-                "https://api.openai.com/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {settings.groq_api_key}"},
                 files={
                     "file": (file.filename, audio_content, file.content_type)
                 },
                 data={
-                    "model": "whisper-1",
+                    "model": settings.groq_stt_model,
                     "language": "ko"
                 }
             )

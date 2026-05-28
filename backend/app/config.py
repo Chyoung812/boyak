@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     kakao_rest_api_key: str = Field(default="", alias="KAKAO_REST_API_KEY")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_model: str = Field(default="gpt-4o-mini", alias="OPENAI_MODEL")
+    groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+    groq_stt_model: str = Field(default="whisper-large-v3-turbo", alias="GROQ_STT_MODEL")
     naver_clova_ocr_invoke_url: str = Field(default="", alias="NAVER_CLOVA_OCR_INVOKE_URL")
     naver_clova_ocr_secret: str = Field(default="", alias="NAVER_CLOVA_OCR_SECRET")
     cors_origins: str = Field(default="http://localhost:3000", alias="CORS_ORIGINS")

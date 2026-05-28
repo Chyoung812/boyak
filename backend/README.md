@@ -71,7 +71,7 @@ docker build -t boyak-backend .
 docker run --rm -p 8001:8000 --env-file .env boyak-backend
 ```
 
-Render Docker 배포 시 repo root의 `Dockerfile`을 사용하고, `DATABASE_URL`, `OPENAI_API_KEY`, `PUBLIC_DATA_SERVICE_KEY`, `FOODSAFETY_API_KEY`, `CORS_ORIGINS`를 환경변수로 등록합니다.
+Render Docker 배포 시 repo root의 `Dockerfile`을 사용하고, `DATABASE_URL`, `OPENAI_API_KEY`, `GROQ_API_KEY`, `GROQ_STT_MODEL`, `PUBLIC_DATA_SERVICE_KEY`, `FOODSAFETY_API_KEY`, `CORS_ORIGINS`를 환경변수로 등록합니다.
 
 ## 데이터 연결 우선순위
 
