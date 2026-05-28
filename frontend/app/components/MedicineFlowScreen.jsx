@@ -70,8 +70,8 @@ function MedicineFlowScreen({
   return (
     <section className="lg:flex lg:h-full lg:flex-col" aria-labelledby="medicine-title">
       <BackButton onClick={onBack} />
-      <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-blue lg:mb-3 lg:gap-3">
-        <span className="grid size-14 place-items-center rounded-full bg-boyak-blue text-white lg:size-10">
+      <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-green lg:mb-3 lg:gap-3">
+        <span className="grid size-14 place-items-center rounded-full bg-boyak-green text-white lg:size-10">
           <Pill className="size-9 lg:size-6" aria-hidden="true" />
         </span>
         <h1 id="medicine-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
@@ -80,9 +80,9 @@ function MedicineFlowScreen({
       </div>
 
       {/* Mobile step indicator */}
-      <div className="mb-6 rounded-2xl border border-[#C8DAF7] bg-[#EDF4FF] p-4 md:hidden" aria-label="현재 약 복용 안전 확인 단계">
+      <div className="mb-6 rounded-2xl border border-[#BFE5CB] bg-[#EDF9F1] p-4 md:hidden" aria-label="현재 약 복용 안전 확인 단계">
         <p className="text-base font-black text-boyak-muted">현재 진행 단계</p>
-        <p className="mt-1 text-2xl font-black text-boyak-blue">
+        <p className="mt-1 text-2xl font-black text-boyak-green">
           {currentIndex + 1} / {medicineSteps.length} {currentStepLabel}
         </p>
       </div>
@@ -94,12 +94,12 @@ function MedicineFlowScreen({
             key={label}
             className={`flex min-h-16 w-full items-center justify-center rounded-2xl border px-4 text-center text-base font-black leading-tight lg:min-h-14 lg:px-4 lg:text-lg xl:min-h-16 xl:text-xl ${
               index <= currentIndex
-                ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
+                ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
             aria-current={index === currentIndex ? "step" : undefined}
           >
-            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-8 lg:text-base">
+            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-green text-sm text-white lg:size-8 lg:text-base">
               {index + 1}
             </span>
             {label}
@@ -121,7 +121,7 @@ function MedicineFlowScreen({
 
       {step === "ocr" && (
         <FlowPanel
-          icon={<Loader2 className="size-14 animate-spin text-boyak-blue" aria-hidden="true" />}
+          icon={<Loader2 className="size-14 animate-spin text-boyak-green" aria-hidden="true" />}
           title="OCR로 약 정보를 읽는 중이에요"
           body={`${photoPreviews?.length || 1}장 사진을 하나의 복용 묶음으로 보고 약 이름, 성분, 조제일자를 추출하고 있어요. 완료되면 자동으로 확인 화면으로 이동합니다.`}
           primaryLabel={isOcrLoading ? "분석 중" : "추출 내용 확인"}
@@ -176,7 +176,7 @@ function MedicineFlowScreen({
           </p>
           {/* 다음 단계 */}
           <button
-            className="inline-flex min-h-16 w-full items-center justify-center rounded-2xl bg-boyak-blue text-xl font-black text-white disabled:bg-boyak-line"
+            className="inline-flex min-h-16 w-full items-center justify-center rounded-2xl bg-boyak-green text-xl font-black text-white disabled:bg-boyak-line"
             type="button"
             disabled={!normalizeItems.length}
             onClick={() => onStepChange("add")}
@@ -189,11 +189,11 @@ function MedicineFlowScreen({
       {step === "add" && (
         <div className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8">
           <StepHeader
-            icon={<Plus className="size-12 text-boyak-blue" />}
+            icon={<Plus className="size-12 text-boyak-green" />}
             title="집에 있는 다른 약도 추가할까요?"
           />
           {selectedHomeMedicines.length > 0 && (
-            <p className="mb-4 rounded-xl bg-[#EDF4FF] px-4 py-3 text-lg font-black text-boyak-blue lg:text-base">
+            <p className="mb-4 rounded-xl bg-[#EDF9F1] px-4 py-3 text-lg font-black text-boyak-green lg:text-base">
               추가됨: {selectedHomeMedicines.join(", ")}
             </p>
           )}
@@ -206,8 +206,8 @@ function MedicineFlowScreen({
                   key={medicine.name}
                   className={`flex flex-col items-center justify-center gap-2.5 rounded-2xl border-2 py-5 transition lg:py-4 ${
                     isSelected
-                      ? "border-boyak-blue bg-[#EDF4FF]"
-                      : "border-boyak-line bg-white hover:border-boyak-blue"
+                      ? "border-boyak-green bg-[#EDF9F1]"
+                      : "border-boyak-line bg-white hover:border-boyak-green"
                   }`}
                   type="button"
                   aria-pressed={isSelected}
@@ -219,7 +219,7 @@ function MedicineFlowScreen({
                   >
                     <IconComp className="size-8 lg:size-7" style={{ color: medicine.color }} />
                   </span>
-                  <span className={`text-base font-black lg:text-sm ${isSelected ? "text-boyak-blue" : "text-boyak-ink"}`}>
+                  <span className={`text-base font-black lg:text-sm ${isSelected ? "text-boyak-green" : "text-boyak-ink"}`}>
                     {isSelected ? "✓ " : ""}{medicine.name}
                   </span>
                 </button>
@@ -279,7 +279,7 @@ function MedicineFlowScreen({
 
       {step === "dur" && (
         <FlowPanel
-          icon={<ShieldCheck className="size-14 text-boyak-blue" aria-hidden="true" />}
+          icon={<ShieldCheck className="size-14 text-boyak-green" aria-hidden="true" />}
           title="DUR 분석으로 위험 조합을 확인해요"
           body={isSafetyLoading ? "선택한 약 후보의 제품코드/성분코드로 DUR 노인주의, 연령금기, 병용금기를 확인하고 있어요." : "분석이 끝나면 결과 화면으로 자동 이동합니다."}
           primaryLabel={isSafetyLoading ? "분석 중" : "결과 확인"}
@@ -325,7 +325,7 @@ function CaptureStep({
           <div className="w-full">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={previewUrl} alt="마지막으로 선택한 약 사진 미리보기" className="mx-auto max-h-[230px] max-w-full rounded-lg object-contain lg:max-h-[220px]" />
-            <p className="mt-5 text-3xl font-black text-boyak-blue lg:mt-3 lg:text-2xl">
+            <p className="mt-5 text-3xl font-black text-boyak-green lg:mt-3 lg:text-2xl">
               현재 {photoPreviews.length}장 담았어요
             </p>
             <p className="mt-2 text-xl font-bold text-boyak-muted lg:text-base">
@@ -352,7 +352,7 @@ function CaptureStep({
 
       <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
         <button
-          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-blue px-8 text-xl font-black text-white lg:min-h-[clamp(72px,8vh,84px)] lg:text-2xl"
+          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-green px-8 text-xl font-black text-white lg:min-h-[clamp(72px,8vh,84px)] lg:text-2xl"
           type="button"
           onClick={() => cameraInputRef.current?.click()}
         >
@@ -379,9 +379,9 @@ function CaptureStep({
       </div>
 
       {photoPreviews.length > 0 && (
-        <div className="mt-4 rounded-2xl border-2 border-[#C8DAF7] bg-[#EDF4FF] p-4 lg:mt-3">
+        <div className="mt-4 rounded-2xl border-2 border-[#BFE5CB] bg-[#EDF9F1] p-4 lg:mt-3">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-xl font-black text-boyak-blue lg:text-lg">촬영한 약봉투 {photoPreviews.length}장</p>
+            <p className="text-xl font-black text-boyak-green lg:text-lg">촬영한 약봉투 {photoPreviews.length}장</p>
             <button className="rounded-xl border border-boyak-line bg-white px-4 py-2 text-base font-black" type="button" onClick={onResetPhotos}>
               다시 찍기
             </button>
@@ -422,20 +422,20 @@ function DrugCard({ name, desc, dosage }) {
   return (
     <div className="flex items-center gap-4 rounded-2xl border-2 border-boyak-line bg-white p-4">
       <div className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-[#F0F4FF]">
-        <Pill className="size-8 text-boyak-blue" />
+        <Pill className="size-8 text-boyak-green" />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
         </div>
         {desc
-          ? <p className="mt-0.5 text-base font-bold text-boyak-blue lg:text-sm">{desc}</p>
+          ? <p className="mt-0.5 text-base font-bold text-boyak-green lg:text-sm">{desc}</p>
           : <p className="mt-0.5 text-sm text-boyak-muted">약사 또는 의사에게 문의하세요</p>
         }
         {dosingParts.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-2">
             {dosingParts.map((p, i) => (
-              <span key={i} className="rounded-full bg-[#EDF4FF] px-2.5 py-0.5 text-xs font-black text-boyak-blue">
+              <span key={i} className="rounded-full bg-[#EDF9F1] px-2.5 py-0.5 text-xs font-black text-boyak-green">
                 {p.icon} {p.text}
               </span>
             ))}
@@ -464,7 +464,7 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
     safe:    { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", text: "text-boyak-green", emoji: "😊", label: "같이 먹어도 괜찮아요!" },
     warning: { bg: "bg-[#FFF8E8]", border: "border-[#F5D08A]", text: "text-[#8A5A00]",   emoji: "⚠️", label: "주의가 필요해요"     },
     danger:  { bg: "bg-[#FFF0F0]", border: "border-[#FFC5C5]", text: "text-boyak-red",   emoji: "🚫", label: "함께 드시면 안돼요"  },
-    unknown: { bg: "bg-[#EDF4FF]", border: "border-[#C8DAF7]", text: "text-boyak-blue",  emoji: "❓", label: "확인이 필요해요"     },
+    unknown: { bg: "bg-[#EDF9F1]", border: "border-[#BFE5CB]", text: "text-boyak-green",  emoji: "❓", label: "확인이 필요해요"     },
   };
   const dur = durConfig[level];
   const guidance = GUIDANCE[level];
@@ -514,18 +514,18 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
       {(hasHerbal || notes.length > 0) && (
         <div className="grid gap-2">
           {hasHerbal && (
-            <div className="flex items-start gap-3 rounded-2xl bg-[#EDF4FF] px-5 py-4">
+            <div className="flex items-start gap-3 rounded-2xl bg-[#EDF9F1] px-5 py-4">
               <span className="mt-0.5 text-xl">🌿</span>
-              <p className="text-base font-bold text-boyak-blue leading-relaxed">
+              <p className="text-base font-bold text-boyak-green leading-relaxed">
                 한약을 함께 드시는 경우, 한약-양약 상호작용이 있을 수 있어요.<br />
                 한의사나 약사 선생님께 꼭 확인하세요.
               </p>
             </div>
           )}
           {notes.map((note, i) => (
-            <div key={i} className="flex items-start gap-3 rounded-2xl bg-[#EDF4FF] px-5 py-4">
+            <div key={i} className="flex items-start gap-3 rounded-2xl bg-[#EDF9F1] px-5 py-4">
               <span className="mt-0.5 text-xl">💡</span>
-              <p className="text-base font-bold text-boyak-blue">{note}</p>
+              <p className="text-base font-bold text-boyak-green">{note}</p>
             </div>
           ))}
         </div>

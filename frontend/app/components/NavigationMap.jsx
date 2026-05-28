@@ -336,7 +336,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
               현재 위치
             </button>
             <button
-              className="rounded-lg bg-boyak-green px-3 py-2 text-sm font-black text-white lg:min-h-12 lg:px-5 lg:text-base"
+              className="rounded-lg bg-boyak-blue px-3 py-2 text-sm font-black text-white lg:min-h-12 lg:px-5 lg:text-base"
               type="button"
               onClick={() => setShowAddressInput((v) => !v)}
             >
@@ -348,7 +348,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
         {showAddressInput && (
           <div className="mt-3 flex gap-2">
             <input
-              className="flex-1 rounded-lg border border-[#30343B] px-4 py-3 text-lg font-bold outline-none focus:border-boyak-green lg:min-h-14 lg:text-lg"
+              className="flex-1 rounded-lg border border-[#30343B] px-4 py-3 text-lg font-bold outline-none focus:border-boyak-blue lg:min-h-14 lg:text-lg"
               type="text"
               placeholder="주소나 장소 이름을 입력하세요"
               value={addressInput}
@@ -356,7 +356,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
               onKeyDown={(e) => e.key === "Enter" && handleAddressSearch()}
             />
             <button
-              className="rounded-lg bg-boyak-green px-4 py-3 text-lg font-black text-white disabled:opacity-50 lg:min-h-14 lg:px-6 lg:text-lg"
+              className="rounded-lg bg-boyak-blue px-4 py-3 text-lg font-black text-white disabled:opacity-50 lg:min-h-14 lg:px-6 lg:text-lg"
               type="button"
               disabled={isGeocoding || !addressInput.trim()}
               onClick={handleAddressSearch}
@@ -388,7 +388,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
           )}
           {isLocating && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#EFF1F4]">
-              <div className="size-12 animate-spin rounded-full border-4 border-[#C8E6C9] border-t-boyak-green" aria-hidden="true" />
+              <div className="size-12 animate-spin rounded-full border-4 border-[#C8DAF7] border-t-boyak-blue" aria-hidden="true" />
               <p className="text-lg font-black text-boyak-muted">위치를 확인하는 중이에요...</p>
             </div>
           )}
@@ -396,7 +396,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-sm">
               {isRelocatingHospital ? (
                 <>
-                  <div className="size-12 animate-spin rounded-full border-4 border-[#C8E6C9] border-t-boyak-green" aria-hidden="true" />
+                  <div className="size-12 animate-spin rounded-full border-4 border-[#C8DAF7] border-t-boyak-blue" aria-hidden="true" />
                   <p className="text-lg font-black text-boyak-muted">근처 병원을 찾는 중이에요...</p>
                 </>
               ) : (
@@ -424,15 +424,15 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
                 : `${hospital.floor ? `${hospital.floor}까지` : ""} 안전한 길 안내 중`}
             </p>
           </div>
-          <p className="shrink-0 text-xl font-black text-boyak-green lg:text-xl">
+          <p className="shrink-0 text-xl font-black text-boyak-blue lg:text-xl">
             {(isRelocatingHospital || relocatedHospitals.length > 0) ? "" : routeInfo ? `예상 도보 ${routeInfo.totalTime}분` : isLocating ? "위치 확인 중" : "계산 중..."}
           </p>
         </div>
 
         {routeInfo && (
           <div className="mb-4 flex flex-wrap gap-3 rounded-xl bg-[#f8f9fa] px-4 py-3 text-lg font-bold lg:px-5 lg:py-3 lg:text-lg">
-            <span className="text-boyak-green">{hospital.route || "평지 위주 경로"}</span>
-            <span className={routeInfo.stairs === 0 ? "text-boyak-green" : "text-boyak-muted"}>
+            <span className="text-boyak-blue">{hospital.route || "평지 위주 경로"}</span>
+            <span className={routeInfo.stairs === 0 ? "text-boyak-blue" : "text-boyak-muted"}>
               {routeInfo.stairs === 0 ? "계단 없음 ✓" : `계단 ${routeInfo.stairs}개`}
             </span>
             <span className="text-boyak-muted">({routeInfo.totalDistance}m)</span>
@@ -449,7 +449,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
           </button>
           <button
             className={`min-h-[80px] rounded-2xl px-4 text-2xl font-black text-white transition lg:min-h-20 lg:text-2xl ${
-              isTracking ? "bg-[#d32f2f]" : "bg-boyak-green"
+              isTracking ? "bg-[#d32f2f]" : "bg-boyak-blue"
             } disabled:opacity-40`}
             type="button"
             onClick={isTracking ? stopTracking : startTracking}
@@ -463,12 +463,12 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
       {/* 위치 변경 후 근처 병원 선택 패널 */}
       {(isRelocatingHospital || relocatedHospitals.length > 0) && (
         <div className="border-t-2 border-boyak-line p-6 lg:p-8">
-          <p className="mb-4 text-xl font-black text-boyak-green lg:text-2xl">
+          <p className="mb-4 text-xl font-black text-boyak-blue lg:text-2xl">
             변경된 위치 근처 병원
           </p>
           {isRelocatingHospital ? (
             <div className="flex items-center gap-3 py-4">
-              <div className="size-8 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-green" aria-hidden="true" />
+              <div className="size-8 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-blue" aria-hidden="true" />
               <p className="text-lg font-bold text-boyak-muted">근처 병원을 찾는 중이에요...</p>
             </div>
           ) : (
@@ -478,7 +478,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
                   key={h.name}
                   type="button"
                   className={`flex min-h-24 items-center justify-between rounded-2xl border-2 px-5 py-4 text-left transition active:scale-[0.98] lg:min-h-28 lg:px-6 ${
-                    h.recommendedForWalking ? "border-boyak-green bg-[#EDF9F1]" : "border-[#30343B] bg-white"
+                    h.recommendedForWalking ? "border-boyak-blue bg-[#EDF4FF]" : "border-[#30343B] bg-white"
                   }`}
                   onClick={() => onRelocatedHospitalSelect?.(h)}
                 >
@@ -490,7 +490,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
                     </p>
                   </div>
                   <span className={`shrink-0 rounded-xl px-3 py-2 text-base font-black lg:px-5 lg:py-3 lg:text-lg ${
-                    h.recommendedForWalking ? "bg-boyak-green text-white" : "bg-[#F5F5F5] text-boyak-muted"
+                    h.recommendedForWalking ? "bg-boyak-blue text-white" : "bg-[#F5F5F5] text-boyak-muted"
                   }`}>
                     선택
                   </span>
