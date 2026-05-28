@@ -753,7 +753,7 @@ export default function Home() {
       <main
         className={
           view === "home"
-            ? "bg-[#F7F8FA] px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:px-24 lg:py-6"
+            ? "bg-[#F7F8FA] px-5 pb-1 pt-5 sm:px-10 sm:pb-1 sm:pt-6 lg:px-24 lg:pb-0 lg:pt-6"
             : view === "cost"
               ? "px-4 pb-16 pt-8 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-3 xl:px-10"
               : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
@@ -966,24 +966,24 @@ function LongLoadingDoctorTip({ isActive, voiceGuideStyle, onSpeak }) {
 
 function HomeSection({ onNavigate }) {
   return (
-    <section className="flex min-h-[calc(100vh-190px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
-      <div className="mb-4 sm:mb-5 lg:mb-6">
-        <p className="mb-2 text-2xl font-black text-[#4F7CFF] sm:text-3xl lg:text-4xl">어르신 건강 지키미</p>
-        <h1 id="home-title" className="mb-2 text-5xl font-black leading-tight text-[#10234A] sm:text-6xl lg:text-7xl">
+    <section className="flex min-h-[calc(100vh-184px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
+      <div className="mb-4 sm:mb-5 lg:mb-5">
+        <p className="mb-2 text-3xl font-black text-[#4F7CFF] sm:text-4xl lg:text-[3rem]">어르신 건강 지키미</p>
+        <h1 id="home-title" className="mb-2 text-6xl font-black leading-tight text-[#10234A] sm:text-7xl lg:text-[5.75rem]">
           안녕하세요!
         </h1>
-        <p className="max-w-[1100px] text-2xl font-bold leading-relaxed text-[#4D5D7C] sm:text-3xl lg:text-[2rem]">
+        <p className="max-w-[1250px] text-3xl font-bold leading-relaxed text-[#4D5D7C] sm:text-4xl lg:text-[2.45rem]">
           약부터 병원 길찾기, 비용 확인까지 한 번에 도와드려요
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3 lg:flex-none lg:gap-6" aria-label="주요 기능">
+      <div className="grid flex-1 gap-4 md:grid-cols-3 lg:gap-6" aria-label="주요 기능">
         {featureCards.map((feature) => {
           const Icon = featureIconMap[feature.id];
           return (
             <button
               key={feature.id}
-              className="flex min-h-[260px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-6 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[330px] lg:min-h-[clamp(540px,56vh,600px)] lg:px-7 lg:py-8"
+              className="flex min-h-[300px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-6 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[380px] lg:h-full lg:min-h-[clamp(620px,62vh,820px)] lg:px-7 lg:py-8"
               style={{
                 backgroundColor: feature.cardColor,
                 borderColor: `${feature.titleColor}33`,
@@ -991,24 +991,24 @@ function HomeSection({ onNavigate }) {
               type="button"
               onClick={() => onNavigate(feature.id)}
             >
-              <span className="text-4xl font-black leading-none sm:text-5xl lg:text-[3.1rem]" style={{ color: feature.titleColor }}>
+              <span className="text-5xl font-black leading-none sm:text-6xl lg:text-[3.8rem]" style={{ color: feature.titleColor }}>
                 {feature.title}
               </span>
               <span
-                className="grid size-28 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-36 lg:size-40 xl:size-44"
+                className="grid size-32 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-40 lg:size-48 xl:size-52"
                 style={{ color: feature.iconColor }}
               >
-                <Icon className="size-11 sm:size-14 lg:size-16 xl:size-20" strokeWidth={2.8} aria-hidden="true" />
+                <Icon className="size-14 sm:size-16 lg:size-20 xl:size-24" strokeWidth={2.8} aria-hidden="true" />
               </span>
-              <span className="whitespace-pre-line text-2xl font-black leading-relaxed text-[#10234A] sm:text-3xl lg:text-[1.9rem]">
+              <span className="whitespace-pre-line text-3xl font-black leading-relaxed text-[#10234A] sm:text-4xl lg:text-[2.35rem]">
                 {feature.copy}
               </span>
               <span
-                className="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-xl px-5 text-2xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-20 sm:text-3xl lg:min-h-20 lg:text-[1.8rem]"
+                className="inline-flex min-h-20 w-full items-center justify-center gap-3 rounded-xl px-5 text-3xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-24 sm:text-4xl lg:min-h-24 lg:text-[2.2rem]"
                 style={{ backgroundColor: feature.buttonColor }}
               >
                 {feature.action}
-                <ChevronRight className="size-8 sm:size-9 lg:size-10" strokeWidth={3} aria-hidden="true" />
+                <ChevronRight className="size-10 sm:size-11 lg:size-12" strokeWidth={3} aria-hidden="true" />
               </span>
             </button>
           );
