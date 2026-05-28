@@ -67,9 +67,8 @@ const STATIC_AUDIO = {
   // cost - body
   "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.": "/audio/cost_body_friendly.wav",
   "병원비를 예상할 부위를 선택해주세요.": "/audio/cost_body_simple.wav",
-  // cost - chat
-  "추가로 궁금한 병원비를 물어볼 수 있는 화면이에요. 입력창에 질문을 쓰거나 음성 입력 버튼을 눌러 질문해보세요.": "/audio/cost_chat_friendly.wav",
-  "궁금한 병원비를 입력하거나 말해보세요.": "/audio/cost_chat_simple.wav",
+  // cost - common questions: friendly text changes often, so use dynamic /api/tts instead of stale static audio.
+  "많이 물어보는 병원비를 확인하세요.": "/audio/cost_chat_simple.wav",
   // settings
   "설정 화면입니다. 글자 크기는 보통, 크게, 아주 크게 중에서 고를 수 있고, 음성 안내 방식은 친절하게 또는 간단하게로 바꿀 수 있어요.": "/audio/settings_friendly.wav",
   "글자 크기와 음성 안내 방식을 바꿀 수 있어요.": "/audio/settings_simple.wav",
@@ -105,9 +104,8 @@ export default function Home() {
   const [hospitalDepartment, setHospitalDepartment] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [selectedHomeMedicines, setSelectedHomeMedicines] = useState([]);
-  const [costStep, setCostStep] = useState("body");
-  const [selectedCostBody, setSelectedCostBody] = useState("허리");
-  const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 약 처방 가능");
+  const [costStep, setCostStep] = useState("estimate");
+  const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 처방전 받을 수 있음");
   const [fontSizeLevel, setFontSizeLevel] = useState("normal");
   const [voiceGuideStyle, setVoiceGuideStyle] = useState("friendly");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -239,7 +237,7 @@ export default function Home() {
     setHospitalDepartment("");
     setIsHospitalLoading(false);
     setSelectedHomeMedicines([]);
-    setCostStep("body");
+    setCostStep("estimate");
   }, [stopSpeaking]);
 
   // 화면이 바뀔 때마다 voiceEnabled 상태면 자동으로 음성 안내
@@ -321,16 +319,6 @@ export default function Home() {
       return isSimpleVoice ? "아픈 곳을 선택해주세요." : "아픈 곳을 말하거나 선택해주세요.";
     }
     if (view === "cost") {
-      if (costStep === "body") {
-        return isSimpleVoice
-          ? "병원비를 예상할 부위를 선택해주세요."
-          : "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.";
-      }
-      if (costStep === "treatment") {
-        return isSimpleVoice
-          ? `${selectedCostBody} 부위의 진료 흐름을 선택해주세요.`
-          : `${selectedCostBody} 부위에 대해 어떤 진료를 받을지 선택하는 화면이에요. 진찰만 볼지, 엑스레이나 물리치료까지 받을지에 따라 예상 비용이 달라집니다.`;
-      }
       if (costStep === "estimate") {
         return isSimpleVoice
           ? `예상 병원비는 ${treatmentCosts[selectedTreatment]} 정도예요.`
@@ -338,10 +326,10 @@ export default function Home() {
       }
       if (costStep === "chat") {
         return isSimpleVoice
-          ? "궁금한 병원비를 입력하거나 말해보세요."
-          : "추가로 궁금한 병원비를 물어볼 수 있는 화면이에요. 입력창에 질문을 쓰거나 음성 입력 버튼을 눌러 질문해보세요.";
+          ? "많이 물어보는 병원비를 확인하세요."
+          : "첫 방문 비용표에 없는 급여 기준만 따로 정리했어요. 재방문, 시간대, 나이에 따라 병원비가 달라질 수 있어요.";
       }
-      return isSimpleVoice ? "병원비 예상 화면입니다." : "부위와 진료 흐름을 선택하면 예상 병원비를 안내합니다.";
+      return isSimpleVoice ? "병원비 예상 화면입니다." : "진료 흐름별 예상 병원비와 확인 질문을 안내합니다.";
     }
     if (view === "settings") {
       return isSimpleVoice
@@ -351,7 +339,7 @@ export default function Home() {
     return isSimpleVoice
       ? "필요한 기능을 선택해주세요."
       : "약 복용 안전 확인, 병원 길찾기, 병원비 예상 중 필요한 기능을 선택해주세요.";
-  }, [view, medicineStep, costStep, selectedCostBody, selectedTreatment, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
+  }, [view, medicineStep, costStep, selectedTreatment, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
 
   const handleMedicineBack = useCallback(() => {
     stopSpeaking();
@@ -659,14 +647,6 @@ export default function Home() {
     setRelocatedHospitals([]);
   }, []);
 
-  const handleSelectBody = useCallback(
-    (body) => {
-      stopSpeaking();
-      setSelectedCostBody(body);
-    },
-    [stopSpeaking]
-  );
-
   const handleSelectTreatment = useCallback(
     (treatment) => {
       stopSpeaking();
@@ -700,14 +680,14 @@ export default function Home() {
         return;
       }
       speak(
-        `${selectedCostBody} 부위의 ${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요."}`
+        `${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요."}`
       );
     },
-    [speak, selectedCostBody, selectedTreatment]
+    [speak, selectedTreatment]
   );
 
   const handleCostAsk = useCallback(() => {
-    speak("궁금한 병원비를 말씀해주세요. 예를 들어, MRI도 건강보험이 되나요 라고 말할 수 있어요.");
+    speak("궁금한 병원비를 말씀해주세요. 예를 들어, 재방문하면 얼마인가요 라고 말할 수 있어요.");
   }, [speak]);
 
   const displayHospitals = isHospitalLoading ? [] : (hospitals.length > 0 ? hospitals : nearbyHospitals);
@@ -773,8 +753,10 @@ export default function Home() {
       <main
         className={
           view === "home"
-            ? "bg-[#F7F8FA] px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:px-24 lg:py-6"
-            : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
+            ? "bg-[#F7F8FA] px-5 pb-1 pt-5 sm:px-10 sm:pb-1 sm:pt-6 lg:px-24 lg:pb-0 lg:pt-6"
+            : view === "cost"
+              ? "px-4 pb-16 pt-8 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-3 xl:px-10"
+              : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
         }
       >
         {view === "home" && <HomeSection onNavigate={setView} />}
@@ -851,14 +833,13 @@ export default function Home() {
         {view === "cost" && (
           <CostEstimateScreen
             step={costStep}
-            selectedBody={selectedCostBody}
             selectedTreatment={selectedTreatment}
             onBack={handleCostBack}
             onStepChange={handleCostStepChange}
-            onSelectBody={handleSelectBody}
             onSelectTreatment={handleSelectTreatment}
             onSpeak={handleCostSpeak}
             onAsk={handleCostAsk}
+            apiBaseUrl={API_BASE_URL}
           />
         )}
       </main>
@@ -985,13 +966,13 @@ function LongLoadingDoctorTip({ isActive, voiceGuideStyle, onSpeak }) {
 
 function HomeSection({ onNavigate }) {
   return (
-    <section className="flex min-h-[calc(100vh-190px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
-      <div className="mb-4 sm:mb-5 lg:mb-6">
-        <p className="mb-2 text-xl font-black text-[#4F7CFF] sm:text-2xl lg:text-3xl">어르신 건강 지키미</p>
-        <h1 id="home-title" className="mb-2 text-4xl font-black leading-tight text-[#10234A] sm:text-5xl lg:text-6xl">
+    <section className="flex min-h-[calc(100vh-184px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
+      <div className="mb-4 sm:mb-5 lg:mb-5">
+        <p className="mb-2 text-3xl font-black text-[#4F7CFF] sm:text-4xl lg:text-[3rem]">어르신 건강 지키미</p>
+        <h1 id="home-title" className="mb-2 text-6xl font-black leading-tight text-[#10234A] sm:text-7xl lg:text-[5.75rem]">
           안녕하세요!
         </h1>
-        <p className="max-w-[900px] text-xl font-bold leading-relaxed text-[#4D5D7C] sm:text-2xl lg:text-[1.65rem]">
+        <p className="max-w-[1250px] text-3xl font-bold leading-relaxed text-[#4D5D7C] sm:text-4xl lg:text-[2.45rem]">
           약부터 병원 길찾기, 비용 확인까지 한 번에 도와드려요
         </p>
       </div>
@@ -1002,7 +983,7 @@ function HomeSection({ onNavigate }) {
           return (
             <button
               key={feature.id}
-              className="flex min-h-[230px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-5 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[290px] lg:h-full lg:min-h-0 lg:px-7 lg:py-7"
+              className="flex min-h-[300px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-6 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[380px] lg:h-full lg:min-h-[clamp(620px,62vh,820px)] lg:px-7 lg:py-8"
               style={{
                 backgroundColor: feature.cardColor,
                 borderColor: `${feature.titleColor}33`,
@@ -1010,24 +991,24 @@ function HomeSection({ onNavigate }) {
               type="button"
               onClick={() => onNavigate(feature.id)}
             >
-              <span className="text-3xl font-black leading-none sm:text-4xl lg:text-[2.6rem]" style={{ color: feature.titleColor }}>
+              <span className="text-5xl font-black leading-none sm:text-6xl lg:text-[3.8rem]" style={{ color: feature.titleColor }}>
                 {feature.title}
               </span>
               <span
-                className="grid size-24 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-32 lg:size-36 xl:size-40"
+                className="grid size-32 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-40 lg:size-48 xl:size-52"
                 style={{ color: feature.iconColor }}
               >
-                <Icon className="size-9 sm:size-12 lg:size-14 xl:size-16" strokeWidth={2.8} aria-hidden="true" />
+                <Icon className="size-14 sm:size-16 lg:size-20 xl:size-24" strokeWidth={2.8} aria-hidden="true" />
               </span>
-              <span className="whitespace-pre-line text-xl font-black leading-relaxed text-[#10234A] sm:text-2xl lg:text-[1.65rem]">
+              <span className="whitespace-pre-line text-3xl font-black leading-relaxed text-[#10234A] sm:text-4xl lg:text-[2.35rem]">
                 {feature.copy}
               </span>
               <span
-                className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl px-5 text-xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-16 sm:text-2xl lg:min-h-16 lg:text-[1.55rem]"
+                className="inline-flex min-h-20 w-full items-center justify-center gap-3 rounded-xl px-5 text-3xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-24 sm:text-4xl lg:min-h-24 lg:text-[2.2rem]"
                 style={{ backgroundColor: feature.buttonColor }}
               >
                 {feature.action}
-                <ChevronRight className="size-7 sm:size-8 lg:size-9" strokeWidth={3} aria-hidden="true" />
+                <ChevronRight className="size-10 sm:size-11 lg:size-12" strokeWidth={3} aria-hidden="true" />
               </span>
             </button>
           );

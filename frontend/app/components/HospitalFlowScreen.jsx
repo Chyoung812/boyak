@@ -52,8 +52,8 @@ function HospitalFlowScreen({
   return (
     <section aria-labelledby="hospital-flow-title">
       <BackButton onClick={onBack} />
-      <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-green lg:mb-3 lg:gap-3">
-        <span className="grid size-14 place-items-center rounded-full bg-boyak-green text-white lg:size-10">
+      <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-blue lg:mb-3 lg:gap-3">
+        <span className="grid size-14 place-items-center rounded-full bg-boyak-blue text-white lg:size-10">
           <MapPin className="size-9 lg:size-6" aria-hidden="true" />
         </span>
         <h1 id="hospital-flow-title" className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
@@ -62,9 +62,9 @@ function HospitalFlowScreen({
       </div>
 
       {/* Mobile step indicator */}
-      <div className="mb-6 rounded-2xl border border-[#BFE5CB] bg-[#EDF9F1] p-4 md:hidden" aria-label="현재 길찾기 단계">
+      <div className="mb-6 rounded-2xl border border-[#C8DAF7] bg-[#EDF4FF] p-4 md:hidden" aria-label="현재 길찾기 단계">
         <p className="text-base font-black text-boyak-muted">현재 진행 단계</p>
-        <p className="mt-1 text-2xl font-black text-boyak-green">
+        <p className="mt-1 text-2xl font-black text-boyak-blue">
           {currentIndex + 1} / {hospitalFlowSteps.length} {currentStepLabel}
         </p>
       </div>
@@ -76,12 +76,12 @@ function HospitalFlowScreen({
             key={label}
             className={`flex min-h-16 w-full items-center justify-center rounded-2xl border px-4 text-center text-base font-black leading-tight lg:min-h-14 lg:px-4 lg:text-lg xl:min-h-16 xl:text-xl ${
               index <= currentIndex
-                ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
+                ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
             aria-current={index === currentIndex ? "step" : undefined}
           >
-            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-green text-sm text-white lg:size-8 lg:text-base">
+            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-8 lg:text-base">
               {index + 1}
             </span>
             {label}
@@ -125,7 +125,7 @@ function HospitalFlowScreen({
 
       {step === "arrived" && (
         <FlowPanel
-          icon={<CheckCircle className="size-14 text-boyak-green" aria-hidden="true" />}
+          icon={<CheckCircle className="size-14 text-boyak-blue" aria-hidden="true" />}
           title="도착했어요"
           body="도착 안내와 함께 길안내 만족도를 남길 수 있는 화면입니다."
           primaryLabel="처음으로"
@@ -264,7 +264,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
             아니오
           </button>
           <button
-            className="min-h-[96px] rounded-2xl bg-boyak-green text-3xl font-black text-white transition active:scale-[0.98] lg:min-h-24 lg:text-2xl"
+            className="min-h-[96px] rounded-2xl bg-boyak-blue text-3xl font-black text-white transition active:scale-[0.98] lg:min-h-24 lg:text-2xl"
             type="button"
             onClick={handleConfirm}
           >
@@ -288,14 +288,14 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       <button
         className={`mb-6 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] lg:mb-4 lg:min-h-32 lg:gap-2 lg:text-3xl ${
           voicePhase === "listening"
-            ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
+            ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
             : "border-[#30343B] bg-white"
         }`}
         type="button"
         onClick={toggleVoice}
       >
         <Mic
-          className={`size-14 lg:size-8 ${voicePhase === "listening" ? "animate-pulse text-boyak-green" : "text-boyak-muted"}`}
+          className={`size-14 lg:size-8 ${voicePhase === "listening" ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
           strokeWidth={2.4}
           aria-hidden="true"
         />
@@ -318,7 +318,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
               key={symptom}
               className={`min-h-24 rounded-2xl border-2 px-4 text-2xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-28 sm:text-3xl lg:min-h-24 lg:text-3xl ${
                 isSelected
-                  ? "border-boyak-green bg-[#EDF9F1] text-boyak-green"
+                  ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                   : "border-[#30343B] bg-white text-boyak-ink"
               }`}
               type="button"
@@ -340,7 +340,7 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
     <div className="mx-auto w-full rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
       <div className="mb-8 flex items-start justify-between gap-4 lg:mb-4 lg:gap-3">
         <div>
-          <p className="mb-3 text-xl font-black text-boyak-green lg:mb-1 lg:text-lg">
+          <p className="mb-3 text-xl font-black text-boyak-blue lg:mb-1 lg:text-lg">
             {symptom ? `${symptom} 증상 분석 결과` : "AI 증상 분석 결과"}
           </p>
           <h2 className="text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
@@ -356,7 +356,7 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
 
       {isLoading && (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
-          <div className="size-14 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-green" aria-hidden="true" />
+          <div className="size-14 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-blue" aria-hidden="true" />
           <p className="text-xl font-black text-boyak-muted">가까운 병원을 찾는 중이에요...</p>
         </div>
       )}
@@ -366,13 +366,13 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
           <article
             key={h.name}
             className={`rounded-3xl border-2 bg-white p-6 lg:p-4 ${
-              h.recommendedForWalking ? "border-boyak-green" : "border-[#30343B]"
+              h.recommendedForWalking ? "border-boyak-blue" : "border-[#30343B]"
             }`}
           >
             <div className="mb-5 flex items-start justify-between gap-4 lg:mb-3 lg:gap-3">
               <div>
                 {h.recommendedForWalking ? (
-                  <p className="mb-2 inline-flex items-center gap-1 rounded-lg bg-boyak-green px-3 py-1 text-base font-black text-white lg:mb-1 lg:text-sm">
+                  <p className="mb-2 inline-flex items-center gap-1 rounded-lg bg-boyak-blue px-3 py-1 text-base font-black text-white lg:mb-1 lg:text-sm">
                     <Star className="size-4" fill="currentColor" aria-hidden="true" />
                     보행자 맞춤 추천
                   </p>
@@ -389,7 +389,7 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
               <span
                 className={`shrink-0 rounded-xl px-4 py-2 text-lg font-black lg:px-3 lg:py-2 lg:text-sm ${
                   h.recommendedForWalking
-                    ? "bg-[#EDF9F1] text-boyak-green"
+                    ? "bg-[#EDF4FF] text-boyak-blue"
                     : "bg-[#F5F5F5] text-boyak-muted"
                 }`}
               >
@@ -405,7 +405,7 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
                 <MapPin className="size-7 text-boyak-muted lg:size-5" aria-hidden="true" />
                 {h.route}
                 {h.stairs !== undefined && (
-                  <span className={`ml-1 text-lg lg:text-sm ${h.isFlat ? "text-boyak-green" : "text-boyak-muted"}`}>
+                  <span className={`ml-1 text-lg lg:text-sm ${h.isFlat ? "text-boyak-blue" : "text-boyak-muted"}`}>
                     {h.isFlat ? "· 계단 없음" : `· 계단 ${h.stairs}개`}
                   </span>
                 )}
@@ -413,7 +413,7 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
             </div>
             <button
               className={`min-h-20 w-full rounded-2xl px-6 text-2xl font-black text-white lg:min-h-24 lg:text-2xl ${
-                h.recommendedForWalking ? "bg-boyak-green" : "bg-[#5B616B]"
+                h.recommendedForWalking ? "bg-boyak-blue" : "bg-[#5B616B]"
               }`}
               type="button"
               onClick={() => onSelectHospital(index)}
@@ -432,26 +432,26 @@ function HospitalSelectPanel({ hospital, onStepChange, onSpeak }) {
   return (
     <div className="mx-auto w-full rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
       <StepHeader
-        icon={<Building2 className="size-12 text-boyak-green" />}
+        icon={<Building2 className="size-12 text-boyak-blue" />}
         title="병원을 선택했어요"
       />
       <article className="rounded-3xl border-2 border-[#30343B] bg-white p-7 lg:p-5">
-        <p className="mb-3 text-xl font-black text-boyak-green lg:mb-2 lg:text-lg">{hospital.department}</p>
+        <p className="mb-3 text-xl font-black text-boyak-blue lg:mb-2 lg:text-lg">{hospital.department}</p>
         <h2 className="mb-5 text-4xl font-black leading-tight lg:mb-3 lg:text-3xl">{hospital.name}</h2>
         <p className="text-2xl font-extrabold text-boyak-muted lg:text-lg">
           {hospital.walk} ({hospital.distance}) · {hospital.route}
         </p>
         {hospital.stairs !== undefined && (
-          <p className={`mt-3 text-xl font-bold lg:text-base ${hospital.isFlat ? "text-boyak-green" : "text-boyak-muted"}`}>
+          <p className={`mt-3 text-xl font-bold lg:text-base ${hospital.isFlat ? "text-boyak-blue" : "text-boyak-muted"}`}>
             {hospital.isFlat ? "✓ 계단 없는 평지 경로" : `계단 ${hospital.stairs}개 포함`}
           </p>
         )}
-        <p className="mt-4 inline-flex rounded-xl bg-[#EDF9F1] px-5 py-3 text-xl font-black text-boyak-green lg:mt-3 lg:px-4 lg:py-2 lg:text-base">
+        <p className="mt-4 inline-flex rounded-xl bg-[#EDF4FF] px-5 py-3 text-xl font-black text-boyak-blue lg:mt-3 lg:px-4 lg:py-2 lg:text-base">
           {hospital.status}
         </p>
       </article>
       <button
-        className="mt-6 min-h-[96px] w-full rounded-2xl bg-boyak-green px-7 text-3xl font-black text-white lg:mt-6 lg:min-h-24 lg:text-3xl"
+        className="mt-6 min-h-[96px] w-full rounded-2xl bg-boyak-blue px-7 text-3xl font-black text-white lg:mt-6 lg:min-h-24 lg:text-3xl"
         type="button"
         onClick={() => {
           onStepChange("route");

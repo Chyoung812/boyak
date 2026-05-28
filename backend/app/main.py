@@ -22,7 +22,7 @@ from app.rate_limit import (
     RATE_OCR, RATE_AI_ROUTE, RATE_TMAP,
 )
 from app.config import get_settings
-from app.cost_service import get_cost_estimate
+from app.cost_service import answer_cost_question, get_cost_estimate
 from app.drug_index_service import normalize_medicine_names
 from app.drug_info_service import get_drug_descriptions
 from app.ocr_service import extract_medicine_bags_from_images
@@ -109,6 +109,12 @@ class AiRouteRequest(BaseModel):
     text: str
 
 
+class CostChatRequest(BaseModel):
+    question: str
+    body: str = "통증"
+    treatment: str = "진찰 + X-ray + 처방전 받을 수 있음"
+
+
 class MedicineNormalizeRequest(BaseModel):
     medicine_names: List[Any]
 
@@ -165,17 +171,15 @@ def cost_estimate(
     return get_cost_estimate(body=body, treatment=treatment)
 
 
-@app.post("/api/safety/check")
-def safety_check(payload: SafetyCheckRequest) -> dict:
-    logger.info("[DUR] 단순 안전확인 | 약 %d개 | 나이 %s", len(payload.medicine_names), payload.age)
-    return check_medicine_safety(
-        medicine_names=payload.medicine_names,
-        age=payload.age,
-        has_herbal_medicine=payload.has_herbal_medicine,
-        has_supplement=payload.has_supplement,
-        dispensed_days_ago=payload.dispensed_days_ago,
-        dosage_form=payload.dosage_form,
+@app.post("/api/costs/chat")
+def cost_chat(payload: CostChatRequest) -> dict:
+    logger.info("[병원비챗봇] %s | 부위=%s | 흐름=%s", payload.question, payload.body, payload.treatment)
+    return answer_cost_question(
+        question=payload.question,
+        body=payload.body,
+        treatment=payload.treatment,
     )
+
 
 
 @app.post("/api/safety/check-bags")
