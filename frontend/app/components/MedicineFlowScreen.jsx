@@ -428,10 +428,9 @@ function DrugCard({ name, desc, dosage }) {
         <div className="flex items-center gap-2">
           <p className="text-xl font-black text-boyak-ink lg:text-lg">{name}</p>
         </div>
-        {desc
-          ? <p className="mt-0.5 text-base font-bold text-boyak-green lg:text-sm">{desc}</p>
-          : <p className="mt-0.5 text-sm text-boyak-muted">효능 정보를 확인 중이에요</p>
-        }
+        {desc && (
+          <p className="mt-0.5 text-base font-bold text-boyak-green lg:text-sm">{desc}</p>
+        )}
         {dosingParts.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-2">
             {dosingParts.map((p, i) => (

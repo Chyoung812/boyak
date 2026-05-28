@@ -64,21 +64,26 @@ def _format_alert(raw: Dict[str, Any]) -> Dict[str, Any]:
         drug_a = raw.get("ingredient_name_a") or raw.get("product_name_a") or ""
         drug_b = raw.get("ingredient_name_b") or raw.get("product_name_b") or ""
         title = f"병용금기: {drug_a} + {drug_b}"
-        simple_reason = f"'{drug_a}'과 '{drug_b}'는 같이 드시면 절대 안 됩니다. 두 약이 몸 안에서 서로 방해해서 해로울 수 있어요."
+        name_a = raw.get("product_name_a") or ""
+        name_b = raw.get("product_name_b") or ""
+        if name_a and name_b:
+            simple_reason = f"'{name_a}'과 '{name_b}'는 같이 드시면 절대 안 됩니다. 지금 바로 약사 선생님께 약 봉투를 모두 보여주세요."
+        else:
+            simple_reason = "처방받은 약 중 함께 드시면 안 되는 조합이 있어요. 지금 바로 약사 선생님께 약 봉투를 모두 보여주세요."
     elif category == "연령금기":
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         age_val = raw.get("age_value", "")
         age_cond = raw.get("age_condition", "")
         title = f"연령금기: {drug} ({age_val} {age_cond})"
-        simple_reason = f"'{drug}'은 특별히 조심해야 하는 약이에요. 드시기 전에 꼭 확인하세요."
+        simple_reason = "이 처방에 나이에 따라 주의가 필요한 성분이 있어요. 복용 전 약사 선생님께 약 봉투를 보여주고 확인하세요."
     elif category == "임부금기":
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         title = f"임부금기: {drug}"
-        simple_reason = f"'{drug}'은 임산부께서 드시면 위험한 약이에요."
+        simple_reason = "이 처방에 임산부가 드시면 안 되는 성분이 있어요. 반드시 의사 선생님께 먼저 확인하세요."
     else:
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         title = f"{category}: {drug}"
-        simple_reason = f"'{drug}'에 주의가 필요해요. 복용 전 약사 선생님께 이 약 이름을 보여주세요."
+        simple_reason = "이 처방에 특별히 주의가 필요한 성분이 포함되어 있어요. 복용 전 약사 선생님께 꼭 확인해 주세요."
 
     return {"category": category, "level": level, "title": title, "reason": reason, "simple_reason": simple_reason, "raw": raw}
 
