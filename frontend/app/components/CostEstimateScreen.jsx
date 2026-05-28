@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useCallback, useRef, useState } from "react";
-import { Mic, Send } from "lucide-react";
+import { Calculator, Mic, Send } from "lucide-react";
 
 import {
   API_BASE_URL,
@@ -153,8 +153,8 @@ function CostEstimateScreen({
     <section className="cost-shell lg:flex lg:h-full lg:flex-col" aria-labelledby="cost-title">
       <BackButton onClick={handleBack} />
       <div className="mb-5 flex flex-wrap items-center gap-3 text-[#ff5600] lg:mb-4">
-        <span className="grid size-12 place-items-center rounded-[14px] bg-[#ff5600] text-2xl font-black text-white shadow-[0_10px_24px_rgba(255,86,0,0.22)] lg:size-10 lg:text-xl">
-          W
+        <span className="grid size-12 place-items-center rounded-[14px] bg-[#ff5600] text-white shadow-[0_10px_24px_rgba(255,86,0,0.22)] lg:size-10">
+          <Calculator className="size-7 lg:size-6" strokeWidth={2.8} aria-hidden="true" />
         </span>
         <div>
           <p className="text-sm font-black tracking-[0.18em] text-[#7b7b78]">HOSPITAL COST GUIDE</p>

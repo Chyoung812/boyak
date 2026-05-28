@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronRight,
+  Calculator,
   HomeIcon,
-  Hospital,
   ListChecks,
   Map,
   Pill,
@@ -21,7 +21,7 @@ import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
 import BackButton from "./components/BackButton";
 
-const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
+const featureIconMap = { medicine: Pill, hospital: Map, cost: Calculator };
 const doctorTipAudioEntries = doctorTips.flatMap((tip, index) => {
   const tipNumber = String(index + 1).padStart(2, "0");
   return [
