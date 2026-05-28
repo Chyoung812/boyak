@@ -72,18 +72,33 @@ def _format_alert(raw: Dict[str, Any]) -> Dict[str, Any]:
             simple_reason = "처방받은 약 중 함께 드시면 안 되는 조합이 있어요. 지금 바로 약사 선생님께 약 봉투를 모두 보여주세요."
     elif category == "연령금기":
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
-        age_val = raw.get("age_value", "")
-        age_cond = raw.get("age_condition", "")
+        age_val = raw.get("age_value", "").strip()
+        age_cond = raw.get("age_condition", "").strip()
         title = f"연령금기: {drug} ({age_val} {age_cond})"
-        simple_reason = "이 처방에 나이에 따라 주의가 필요한 성분이 있어요. 복용 전 약사 선생님께 약 봉투를 보여주고 확인하세요."
+        drug_display = raw.get("product_name") or ""
+        age_text = f"{age_val} {age_cond}".strip()
+        if drug_display and age_text:
+            simple_reason = f"'{drug_display}'은 {age_text}이신 분이 드실 때 특히 조심해야 해요. 복용 전 약사 선생님께 꼭 확인하세요."
+        elif drug_display:
+            simple_reason = f"'{drug_display}'은 나이에 따라 주의가 필요한 약이에요. 복용 전 약사 선생님께 꼭 확인하세요."
+        else:
+            simple_reason = f"{age_text}이신 분이 특히 조심해야 하는 성분이 있어요. 약사 선생님께 약 봉투를 보여주고 확인하세요."
     elif category == "임부금기":
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         title = f"임부금기: {drug}"
-        simple_reason = "이 처방에 임산부가 드시면 안 되는 성분이 있어요. 반드시 의사 선생님께 먼저 확인하세요."
+        drug_display = raw.get("product_name") or ""
+        if drug_display:
+            simple_reason = f"'{drug_display}'은 임산부가 드시면 안 되는 약이에요. 반드시 의사 선생님께 먼저 확인하세요."
+        else:
+            simple_reason = "이 처방에 임산부가 드시면 안 되는 성분이 있어요. 반드시 의사 선생님께 먼저 확인하세요."
     else:
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         title = f"{category}: {drug}"
-        simple_reason = "이 처방에 특별히 주의가 필요한 성분이 포함되어 있어요. 복용 전 약사 선생님께 꼭 확인해 주세요."
+        drug_display = raw.get("product_name") or ""
+        if drug_display:
+            simple_reason = f"'{drug_display}'에 특별히 주의가 필요한 성분이 있어요. 복용 전 약사 선생님께 꼭 확인해 주세요."
+        else:
+            simple_reason = "이 처방에 특별히 주의가 필요한 성분이 포함되어 있어요. 복용 전 약사 선생님께 꼭 확인해 주세요."
 
     return {"category": category, "level": level, "title": title, "reason": reason, "simple_reason": simple_reason, "raw": raw}
 
