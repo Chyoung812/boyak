@@ -159,6 +159,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening" | "confirm"
   const [transcript, setTranscript] = useState("");
   const [liveTranscript, setLiveTranscript] = useState("");
+  const liveTranscriptRef = useRef("");
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioContextRef = useRef(null);
@@ -185,6 +186,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
       setLiveTranscript("");
+      liveTranscriptRef.current = "";
 
       // 무음 감지: 말이 끝나면 자동 정지
       const audioCtx = new AudioContext();
@@ -232,6 +234,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
             .join("")
             .trim();
           setLiveTranscript(spokenText);
+          liveTranscriptRef.current = spokenText;
         };
         recognition.onerror = () => {};
         speechRecognitionRef.current = recognition;
@@ -286,12 +289,29 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
             const spokenText = data.text.trim();
             setTranscript(spokenText);
             setLiveTranscript("");
+            liveTranscriptRef.current = "";
             setTimeout(() => onSelect(spokenText), 650);
           } else {
-            onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
+            const browserText = liveTranscriptRef.current.trim();
+            if (browserText) {
+              setTranscript(browserText);
+              setLiveTranscript("");
+              liveTranscriptRef.current = "";
+              setTimeout(() => onSelect(browserText), 650);
+            } else {
+              onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
+            }
           }
         } catch (e) {
-          onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
+          const browserText = liveTranscriptRef.current.trim();
+          if (browserText) {
+            setTranscript(browserText);
+            setLiveTranscript("");
+            liveTranscriptRef.current = "";
+            setTimeout(() => onSelect(browserText), 650);
+          } else {
+            onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
+          }
         }
       };
 
