@@ -331,6 +331,8 @@ def main() -> None:
         count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
         print(f"  {table}: {count:,}행")
 
+    conn.execute("PRAGMA journal_mode=DELETE")
+    conn.execute("VACUUM")
     conn.close()
     print(f"\n완료! DB: {DB_PATH}")
 
