@@ -1,6 +1,6 @@
-export default function FlowPanel({ icon, title, body, primaryLabel, onPrimary }) {
+export default function FlowPanel({ icon, title, body, primaryLabel, onPrimary, className = "" }) {
   return (
-    <div className="mx-auto flex w-full flex-col items-center gap-6 rounded-[28px] border-2 border-boyak-line bg-white p-8 text-center shadow-sm lg:gap-6 lg:p-8">
+    <div className={`mx-auto flex w-full flex-col items-center gap-6 rounded-[28px] border-2 border-boyak-line bg-white p-8 text-center shadow-sm lg:gap-6 lg:p-8 ${className}`}>
       {icon && <div aria-hidden="true">{icon}</div>}
 
       <div className="space-y-2">

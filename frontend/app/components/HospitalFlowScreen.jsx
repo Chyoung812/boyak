@@ -32,11 +32,18 @@ function HospitalFlowScreen({
   hospitals = [],
   department = "",
   isLoading = false,
+  loadingMessage = "",
+  locationStatus = null,
+  locationQuery = "",
+  isAddressSearching = false,
   onBack,
   onGoHome,
   onStepChange,
   onSelectSymptom,
   onSelectHospital,
+  onLocationQueryChange,
+  onRetryLocation,
+  onSearchLocation,
   onSpeak,
   onLocationChange,
   relocatedHospitals = [],
@@ -50,9 +57,9 @@ function HospitalFlowScreen({
     department || (selectedSymptom === "두통" ? "신경과 또는 가정의학과" : "정형외과 또는 통증의학과");
 
   return (
-    <section aria-labelledby="hospital-flow-title">
+    <section className="flex w-full flex-1 flex-col lg:min-h-0" aria-labelledby="hospital-flow-title">
       <BackButton onClick={onBack} />
-      <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-blue lg:mb-3 lg:gap-3">
+      <div className="mb-8 flex flex-wrap items-center gap-4 text-boyak-blue lg:mb-2 lg:gap-3">
         <span className="grid size-14 place-items-center rounded-full bg-boyak-blue text-white lg:size-10">
           <MapPin className="size-9 lg:size-6" aria-hidden="true" />
         </span>
@@ -70,18 +77,18 @@ function HospitalFlowScreen({
       </div>
 
       {/* Desktop step bar */}
-      <div className="mb-8 hidden w-full gap-3 md:grid md:grid-cols-5 lg:mb-4 lg:gap-3" aria-label="길찾기 단계">
+      <div className="mb-8 hidden w-full shrink-0 gap-3 md:grid md:grid-cols-5 lg:mb-4 lg:gap-2" aria-label="길찾기 단계">
         {hospitalFlowSteps.map((label, index) => (
           <div
             key={label}
-            className={`flex min-h-16 w-full items-center justify-center rounded-2xl border px-4 text-center text-base font-black leading-tight lg:min-h-14 lg:px-4 lg:text-lg xl:min-h-16 xl:text-xl ${
+            className={`flex min-h-16 w-full items-center justify-center rounded-2xl border px-4 text-center text-base font-black leading-tight lg:min-h-12 lg:px-3 lg:text-base xl:min-h-14 xl:text-lg ${
               index <= currentIndex
                 ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
             aria-current={index === currentIndex ? "step" : undefined}
           >
-            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-8 lg:text-base">
+            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-6 lg:text-sm xl:size-7">
               {index + 1}
             </span>
             {label}
@@ -101,9 +108,17 @@ function HospitalFlowScreen({
         <HospitalResultsPanel
           hospitals={displayHospitals}
           isLoading={isLoading}
+          loadingMessage={loadingMessage}
+          locationStatus={locationStatus}
+          locationQuery={locationQuery}
+          isAddressSearching={isAddressSearching}
           symptom={selectedSymptom}
           department={recommendedDepartment}
           onSelectHospital={onSelectHospital}
+          onLocationQueryChange={onLocationQueryChange}
+          onRetryLocation={onRetryLocation}
+          onSearchLocation={onSearchLocation}
+          onSpeak={onSpeak}
         />
       )}
 
@@ -124,13 +139,16 @@ function HospitalFlowScreen({
       )}
 
       {step === "arrived" && (
-        <FlowPanel
-          icon={<CheckCircle className="size-14 text-boyak-blue" aria-hidden="true" />}
-          title="도착했어요"
-          body="도착 안내와 함께 길안내 만족도를 남길 수 있는 화면입니다."
-          primaryLabel="처음으로"
-          onPrimary={onGoHome ?? onBack}
-        />
+        <div className="flex min-h-0 flex-1">
+          <FlowPanel
+            className="flex-1 justify-center"
+            icon={<CheckCircle className="size-14 text-boyak-blue" aria-hidden="true" />}
+            title="도착했어요"
+            body="도착 안내와 함께 길안내 만족도를 남길 수 있는 화면입니다."
+            primaryLabel="처음으로"
+            onPrimary={onGoHome ?? onBack}
+          />
+        </div>
       )}
     </section>
   );
@@ -247,7 +265,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   // ── 확인 화면 ──
   if (voicePhase === "confirm") {
     return (
-      <div className="mx-auto w-full rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
+      <div className="mx-auto flex w-full flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
         <p className="mb-3 text-xl font-black text-boyak-muted lg:text-lg">제가 들은 내용</p>
         <div className="mb-7 rounded-2xl bg-[#F0F7FF] px-6 py-5 text-3xl font-black text-boyak-blue lg:mb-5 lg:text-2xl">
           &ldquo;{transcript}&rdquo;
@@ -277,16 +295,16 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 
   // ── 기본 입력 화면 ──
   return (
-    <div className="mx-auto w-full rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-6">
-      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-3">
-        <h2 className="text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
+    <div className="mx-auto flex w-full flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-7 lg:py-5">
+      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-2">
+        <h2 className="boyak-h3 font-black text-boyak-ink">
           어디가 불편하신가요?
         </h2>
       </div>
 
       {/* 큰 말하기 버튼 */}
       <button
-        className={`mb-6 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] lg:mb-4 lg:min-h-32 lg:gap-2 lg:text-3xl ${
+        className={`mb-6 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] lg:mb-3 lg:min-h-[92px] lg:gap-2 lg:text-2xl ${
           voicePhase === "listening"
             ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
             : "border-[#30343B] bg-white"
@@ -295,7 +313,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
         onClick={toggleVoice}
       >
         <Mic
-          className={`size-14 lg:size-8 ${voicePhase === "listening" ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
+          className={`size-14 lg:size-7 ${voicePhase === "listening" ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
           strokeWidth={2.4}
           aria-hidden="true"
         />
@@ -310,13 +328,13 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       </div>
 
       {/* 빠른 선택 버튼 */}
-      <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-3" aria-label="증상 빠른 선택">
+      <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-2" aria-label="증상 빠른 선택">
         {symptomOptions.map((symptom) => {
           const isSelected = selectedSymptom === symptom;
           return (
             <button
               key={symptom}
-              className={`min-h-24 rounded-2xl border-2 px-4 text-2xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-28 sm:text-3xl lg:min-h-24 lg:text-3xl ${
+              className={`min-h-24 rounded-2xl border-2 px-4 text-2xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-28 sm:text-3xl lg:min-h-[72px] lg:text-2xl ${
                 isSelected
                   ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                   : "border-[#30343B] bg-white text-boyak-ink"
@@ -335,37 +353,234 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 }
 
 // ─── 병원 결과 패널 ────────────────────────────────────────────────────────────
-function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSelectHospital }) {
+function HospitalResultsPanel({
+  hospitals,
+  isLoading,
+  loadingMessage,
+  locationQuery,
+  isAddressSearching,
+  department,
+  onSelectHospital,
+  onLocationQueryChange,
+  onRetryLocation,
+  onSearchLocation,
+  onSpeak,
+}) {
+  const [isLocationListening, setIsLocationListening] = useState(false);
+  const [isLocationTranscribing, setIsLocationTranscribing] = useState(false);
+  const locationRecorderRef = useRef(null);
+  const locationChunksRef = useRef([]);
+  const locationTimerRef = useRef(null);
+  const locationSilenceTimerRef = useRef(null);
+  const locationAudioContextRef = useRef(null);
+  const locationAnimationFrameRef = useRef(null);
+  const locationSpeechDetectedRef = useRef(false);
+  const locationVoiceSessionRef = useRef(0);
+
+  const stopLocationVoiceInput = useCallback((ignoreResult = false) => {
+    if (ignoreResult) locationVoiceSessionRef.current += 1;
+    if (locationTimerRef.current) {
+      clearTimeout(locationTimerRef.current);
+      locationTimerRef.current = null;
+    }
+    if (locationSilenceTimerRef.current) {
+      clearTimeout(locationSilenceTimerRef.current);
+      locationSilenceTimerRef.current = null;
+    }
+    if (locationAnimationFrameRef.current) {
+      cancelAnimationFrame(locationAnimationFrameRef.current);
+      locationAnimationFrameRef.current = null;
+    }
+    if (locationRecorderRef.current?.state === "recording") {
+      locationRecorderRef.current.stop();
+      return;
+    }
+    locationAudioContextRef.current?.close();
+    locationAudioContextRef.current = null;
+  }, []);
+
+  const searchTypedLocation = useCallback(() => {
+    stopLocationVoiceInput(true);
+    onSearchLocation?.();
+  }, [onSearchLocation, stopLocationVoiceInput]);
+
+  const handleLocationVoiceInput = useCallback(async () => {
+    if (isLocationListening) {
+      stopLocationVoiceInput();
+      return;
+    }
+
+    try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+        throw new Error("unsupported");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const audioContext = new AudioContext();
+      const analyser = audioContext.createAnalyser();
+
+      analyser.fftSize = 512;
+      const audioBuffer = new Uint8Array(analyser.frequencyBinCount);
+      audioContext.createMediaStreamSource(stream).connect(analyser);
+      locationRecorderRef.current = recorder;
+      locationAudioContextRef.current = audioContext;
+      locationChunksRef.current = [];
+      locationSpeechDetectedRef.current = false;
+      const voiceSessionId = locationVoiceSessionRef.current + 1;
+      locationVoiceSessionRef.current = voiceSessionId;
+
+      const checkSpeechEnd = () => {
+        if (recorder.state !== "recording") return;
+
+        analyser.getByteFrequencyData(audioBuffer);
+        const averageVolume = audioBuffer.reduce((sum, value) => sum + value, 0) / audioBuffer.length;
+
+        if (averageVolume > 15) {
+          locationSpeechDetectedRef.current = true;
+          if (locationSilenceTimerRef.current) {
+            clearTimeout(locationSilenceTimerRef.current);
+            locationSilenceTimerRef.current = null;
+          }
+        } else if (locationSpeechDetectedRef.current && !locationSilenceTimerRef.current) {
+          locationSilenceTimerRef.current = setTimeout(stopLocationVoiceInput, 1300);
+        }
+
+        locationAnimationFrameRef.current = requestAnimationFrame(checkSpeechEnd);
+      };
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) locationChunksRef.current.push(event.data);
+      };
+
+      recorder.onstop = async () => {
+        if (locationTimerRef.current) {
+          clearTimeout(locationTimerRef.current);
+          locationTimerRef.current = null;
+        }
+        if (locationSilenceTimerRef.current) {
+          clearTimeout(locationSilenceTimerRef.current);
+          locationSilenceTimerRef.current = null;
+        }
+        if (locationAnimationFrameRef.current) {
+          cancelAnimationFrame(locationAnimationFrameRef.current);
+          locationAnimationFrameRef.current = null;
+        }
+        locationAudioContextRef.current?.close();
+        locationAudioContextRef.current = null;
+        stream.getTracks().forEach((track) => track.stop());
+        setIsLocationListening(false);
+        if (voiceSessionId !== locationVoiceSessionRef.current) {
+          locationRecorderRef.current = null;
+          return;
+        }
+        setIsLocationTranscribing(true);
+
+        try {
+          const audioBlob = new Blob(locationChunksRef.current, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("file", audioBlob, "location.webm");
+
+          const response = await fetch(`${API_BASE_URL}/api/ai/stt`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+          const spokenQuery = data.text?.trim();
+
+          if (!response.ok || !data.ok || !spokenQuery) {
+            throw new Error("음성으로 주소를 듣지 못했어요. 다시 말해주세요.");
+          }
+
+          onLocationQueryChange?.(spokenQuery);
+          onSearchLocation?.(spokenQuery);
+        } catch (error) {
+          onSpeak?.(error.message || "음성으로 주소를 듣지 못했어요. 다시 말해주세요.");
+        } finally {
+          setIsLocationTranscribing(false);
+          locationRecorderRef.current = null;
+        }
+      };
+
+      recorder.start();
+      setIsLocationListening(true);
+      locationAnimationFrameRef.current = requestAnimationFrame(checkSpeechEnd);
+      locationTimerRef.current = setTimeout(stopLocationVoiceInput, 10000);
+    } catch {
+      setIsLocationListening(false);
+      onSpeak?.("마이크 권한이 없어서 음성 입력을 사용할 수 없어요.");
+    }
+  }, [isLocationListening, onLocationQueryChange, onSearchLocation, onSpeak, stopLocationVoiceInput]);
+
   return (
-    <div className="mx-auto w-full rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
-      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-4 lg:gap-3">
-        <div>
-          <p className="mb-3 text-xl font-black text-boyak-blue lg:mb-1 lg:text-lg">
-            {symptom ? `${symptom} 증상 분석 결과` : "AI 증상 분석 결과"}
-          </p>
-          <h2 className="text-3xl font-black leading-relaxed sm:text-4xl lg:text-2xl">
-            {isLoading ? "분석 중..." : `${department}를 추천해요`}
-          </h2>
-          <p className="mt-3 text-xl font-bold leading-relaxed text-boyak-muted lg:mt-1 lg:text-lg">
-            {isLoading
-              ? "계단·경사를 확인하며 가장 편한 경로 순으로 정렬하고 있어요."
-              : "계단이 적고 거리 짧은 순으로 정렬했어요."}
-          </p>
+    <div className="mx-auto flex w-full flex-1 flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-6 shadow-soft sm:px-9 sm:py-8 lg:min-h-0 lg:px-8 lg:py-5">
+      <div className="mb-5 flex items-start justify-between gap-4 lg:mb-3 lg:gap-3">
+        <h2 className="text-3xl font-black leading-tight sm:text-4xl lg:text-2xl">
+          {isLoading ? (loadingMessage || "가까운 병원을 찾고 있어요.") : `${department}를 추천해요.`}
+        </h2>
+      </div>
+
+      <div className="mb-4 grid gap-2 rounded-2xl border border-boyak-line bg-[#F8FAFC] p-3 lg:mb-3 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center">
+        <button
+          className="min-h-12 rounded-xl border-2 border-boyak-blue bg-white px-4 text-lg font-black text-boyak-blue transition active:scale-[0.98] disabled:opacity-50 lg:min-h-11 lg:text-base"
+          type="button"
+          disabled={isLoading || isAddressSearching || isLocationListening || isLocationTranscribing}
+          onClick={onRetryLocation}
+        >
+          현재 위치 다시 확인
+        </button>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <input
+            className="min-h-12 rounded-xl border-2 border-boyak-line bg-white px-4 text-lg font-bold outline-none focus:border-boyak-blue disabled:opacity-60 lg:min-h-11 lg:text-base"
+            type="text"
+            placeholder="주소나 장소 이름 입력"
+            value={locationQuery}
+            disabled={isLoading || isAddressSearching || isLocationListening || isLocationTranscribing}
+            onChange={(event) => onLocationQueryChange?.(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                searchTypedLocation();
+              }
+            }}
+          />
+          <button
+            className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 px-4 text-lg font-black transition active:scale-[0.98] disabled:opacity-50 lg:min-h-11 lg:text-base ${
+              isLocationListening
+                ? "border-boyak-blue bg-boyak-blue text-white"
+                : "border-boyak-blue bg-white text-boyak-blue"
+            }`}
+            type="button"
+            disabled={isLoading || isAddressSearching || isLocationTranscribing}
+            onClick={handleLocationVoiceInput}
+            aria-label="주소나 장소 이름 음성 입력"
+          >
+            <Mic className={`size-6 ${isLocationListening ? "animate-pulse" : ""}`} aria-hidden="true" />
+            {isLocationListening ? "듣는 중" : isLocationTranscribing ? "확인 중" : "말하기"}
+          </button>
         </div>
+        <button
+          className="min-h-12 rounded-xl bg-boyak-blue px-5 text-lg font-black text-white transition active:scale-[0.98] disabled:opacity-50 lg:min-h-11 lg:text-base"
+          type="button"
+          disabled={isLoading || isAddressSearching || isLocationListening || isLocationTranscribing || !locationQuery.trim()}
+          onClick={searchTypedLocation}
+        >
+          {isAddressSearching ? "검색 중" : "이 위치로 찾기"}
+        </button>
       </div>
 
       {isLoading && (
-        <div className="flex flex-col items-center justify-center gap-4 py-16">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 py-16">
           <div className="size-14 animate-spin rounded-full border-4 border-boyak-line border-t-boyak-blue" aria-hidden="true" />
-          <p className="text-xl font-black text-boyak-muted">가까운 병원을 찾는 중이에요...</p>
+          <p className="text-xl font-black text-boyak-muted">{loadingMessage || "가까운 병원을 찾는 중이에요..."}</p>
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3 lg:gap-4">
+      <div className="grid gap-5 lg:min-h-0 lg:flex-1 lg:grid-cols-3 lg:gap-4">
         {!isLoading && hospitals.map((h, index) => (
           <article
             key={h.name}
-            className={`rounded-3xl border-2 bg-white p-6 lg:p-4 ${
+            className={`rounded-3xl border-2 bg-white p-6 lg:flex lg:flex-col lg:p-4 ${
               h.recommendedForWalking ? "border-boyak-blue" : "border-[#30343B]"
             }`}
           >
@@ -386,15 +601,11 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
                   <span className="mt-2 block text-xl text-boyak-muted lg:text-base">{h.department}</span>
                 </h3>
               </div>
-              <span
-                className={`shrink-0 rounded-xl px-4 py-2 text-lg font-black lg:px-3 lg:py-2 lg:text-sm ${
-                  h.recommendedForWalking
-                    ? "bg-[#EDF4FF] text-boyak-blue"
-                    : "bg-[#F5F5F5] text-boyak-muted"
-                }`}
-              >
-                {h.status}
-              </span>
+              {!h.recommendedForWalking && (
+                <span className="shrink-0 rounded-xl bg-[#F5F5F5] px-4 py-2 text-lg font-black text-boyak-muted lg:px-3 lg:py-2 lg:text-sm">
+                  {h.status}
+                </span>
+              )}
             </div>
             <div className="mb-5 grid gap-3 text-xl font-extrabold lg:mb-4 lg:gap-2 lg:text-base">
               <p className="inline-flex items-center gap-3">
@@ -412,7 +623,7 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
               </p>
             </div>
             <button
-              className={`min-h-20 w-full rounded-2xl px-6 text-2xl font-black text-white lg:min-h-24 lg:text-2xl ${
+              className={`min-h-20 w-full rounded-2xl px-6 text-2xl font-black text-white lg:mt-auto lg:min-h-24 lg:text-2xl ${
                 h.recommendedForWalking ? "bg-boyak-blue" : "bg-[#5B616B]"
               }`}
               type="button"
@@ -430,12 +641,12 @@ function HospitalResultsPanel({ hospitals, isLoading, symptom, department, onSel
 // ─── 병원 선택 패널 ────────────────────────────────────────────────────────────
 function HospitalSelectPanel({ hospital, onStepChange, onSpeak }) {
   return (
-    <div className="mx-auto w-full rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
+    <div className="mx-auto flex w-full flex-1 flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:min-h-0 lg:px-8 lg:py-8">
       <StepHeader
         icon={<Building2 className="size-12 text-boyak-blue" />}
         title="병원을 선택했어요"
       />
-      <article className="rounded-3xl border-2 border-[#30343B] bg-white p-7 lg:p-5">
+      <article className="rounded-3xl border-2 border-[#30343B] bg-white p-7 lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:p-5">
         <p className="mb-3 text-xl font-black text-boyak-blue lg:mb-2 lg:text-lg">{hospital.department}</p>
         <h2 className="mb-5 text-4xl font-black leading-tight lg:mb-3 lg:text-3xl">{hospital.name}</h2>
         <p className="text-2xl font-extrabold text-boyak-muted lg:text-lg">

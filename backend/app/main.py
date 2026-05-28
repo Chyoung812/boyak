@@ -101,6 +101,10 @@ class HospitalNearbyRequest(BaseModel):
     lon: float = 126.985023
 
 
+class LocationGeocodeRequest(BaseModel):
+    query: str
+
+
 class SymptomAnalyzeRequest(BaseModel):
     symptom: str
 
@@ -112,7 +116,7 @@ class AiRouteRequest(BaseModel):
 class CostChatRequest(BaseModel):
     question: str
     body: str = "통증"
-    treatment: str = "진찰 + X-ray + 처방전 받을 수 있음"
+    treatment: str = "진찰, 엑스레이, 처방전을 받는 경우"
 
 
 class MedicineNormalizeRequest(BaseModel):
@@ -166,7 +170,7 @@ def sources() -> dict:
 @app.get("/api/costs/estimate")
 def cost_estimate(
     body: str = Query(default="무릎", description="어깨/무릎/허리"),
-    treatment: str = Query(default="X-ray 검사", description="프론트 treatmentOptions 값"),
+    treatment: str = Query(default="엑스레이 검사", description="프론트 treatmentOptions 값"),
 ) -> dict:
     return get_cost_estimate(body=body, treatment=treatment)
 
@@ -305,6 +309,61 @@ async def hospital_analyze_symptom(payload: SymptomAnalyzeRequest) -> dict:
             return {"department": dept, "matched_keyword": matched}
     logger.info("[증상분석] 입력: '%s' → 기본: 가정의학과", symptom)
     return {"department": "가정의학과", "matched_keyword": None}
+
+
+@app.post("/api/locations/geocode")
+@limiter.limit(RATE_TMAP)
+async def location_geocode(request: Request, payload: LocationGeocodeRequest) -> dict:
+    require_daily(tmap_daily)
+    query = payload.query.strip()
+    if not query:
+        return {"ok": False, "reason": "주소나 장소 이름을 입력해 주세요."}
+
+    if settings.tmap_app_key:
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                res = await client.get(
+                    "https://apis.openapi.sk.com/tmap/pois",
+                    headers={"appKey": settings.tmap_app_key},
+                    params={
+                        "version": 1,
+                        "searchKeyword": query,
+                        "resCoordType": "WGS84GEO",
+                        "count": 1,
+                    },
+                )
+            pois = res.json().get("searchPoiInfo", {}).get("pois", {}).get("poi", [])
+            poi = pois[0] if pois else None
+            if poi:
+                lat = float(poi.get("frontLat") or poi.get("noorLat"))
+                lon = float(poi.get("frontLon") or poi.get("noorLon"))
+                name = poi.get("name") or query
+                return {"ok": True, "name": name, "lat": lat, "lon": lon, "source": "tmap"}
+        except Exception as exc:
+            logger.warning("[위치검색] TMap 실패: %s", exc)
+
+    if settings.kakao_rest_api_key:
+        try:
+            async with httpx.AsyncClient(timeout=8) as client:
+                res = await client.get(
+                    "https://dapi.kakao.com/v2/local/search/keyword.json",
+                    headers={"Authorization": f"KakaoAK {settings.kakao_rest_api_key}"},
+                    params={"query": query, "size": 1},
+                )
+            docs = res.json().get("documents", [])
+            doc = docs[0] if docs else None
+            if doc:
+                return {
+                    "ok": True,
+                    "name": doc.get("place_name") or query,
+                    "lat": float(doc["y"]),
+                    "lon": float(doc["x"]),
+                    "source": "kakao",
+                }
+        except Exception as exc:
+            logger.warning("[위치검색] Kakao 실패: %s", exc)
+
+    return {"ok": False, "reason": "위치를 찾지 못했어요. 장소 이름을 조금 더 자세히 입력해 주세요."}
 
 
 @app.post("/api/hospitals/nearby")
