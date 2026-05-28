@@ -221,7 +221,10 @@ async def ai_stt(file: UploadFile = File(...)) -> dict:
 
 @app.post("/api/medicines/normalize")
 def medicines_normalize(payload: MedicineNormalizeRequest) -> dict:
-    return normalize_medicine_names(payload.str_names())
+    try:
+        return normalize_medicine_names(payload.str_names())
+    except Exception as e:
+        return {"ok": False, "error": str(e), "type": str(type(e))}
 
 
 class MedicineDescriptionsRequest(BaseModel):
