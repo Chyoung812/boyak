@@ -134,11 +134,11 @@ function CostEstimateScreen({
             aria-labelledby="cost-step-2"
           >
             <StepLabel number="2" title="많이 물어보는 비용" />
-            <IntroCard titleId="cost-step-2" eyebrow="COVERED COST QUESTIONS" title="급여 항목, 이것만 먼저 확인하세요" body="급여기준으로 설명 가능한 기본 항목만 정리했어요. 실제 금액은 병원·부위·촬영 횟수에 따라 달라질 수 있어요." />
+            <IntroCard titleId="cost-step-2" eyebrow="COVERED COST QUESTIONS" title="금액이 달라지는 기준만 확인하세요" body="첫 방문 비용표에 없는 급여 기준만 따로 정리했어요. 재방문, 시간대, 나이에 따라 창구 부담이 달라질 수 있어요." />
 
-            <div className="mx-auto grid max-w-[820px] gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-3">
               {commonCostQuestions.map((item) => (
-                <article key={item.title} className="flex min-h-[260px] flex-col rounded-[24px] border border-[#dedbd6] bg-white p-6 shadow-[0_10px_28px_rgba(17,17,17,0.05)]">
+                <article key={item.title} className="flex min-h-[280px] flex-col rounded-[24px] border border-[#dedbd6] bg-white p-5 shadow-[0_10px_28px_rgba(17,17,17,0.05)]">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="mb-1 text-sm font-black tracking-[0.12em] text-boyak-orange">{item.type}</p>
@@ -163,7 +163,7 @@ function CostEstimateScreen({
               <div>
                 <h3 className="text-xl font-black text-[#111111]">병원 창구에서 이렇게 확인하세요</h3>
                 <p className="mt-2 text-base font-bold leading-relaxed text-[#626260]">
-                  “오늘 하는 검사·치료가 급여 적용되는 항목인가요? 촬영 부위나 횟수가 늘면 병원비가 얼마나 달라지나요?”
+                  “오늘은 초진/재진 중 무엇인가요? 야간·공휴일 가산이나 65세 이상 본인부담 기준이 적용되나요?”
                 </p>
               </div>
               <button
