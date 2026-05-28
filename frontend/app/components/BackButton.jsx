@@ -5,10 +5,10 @@ export default function BackButton({ onClick }) {
     <button
       type="button"
       onClick={onClick}
-      className="mb-4 flex items-center gap-1 text-boyak-muted hover:text-boyak-ink transition-colors text-lg font-bold lg:text-sm"
+      className="mb-6 flex min-h-14 items-center gap-2 text-2xl font-black text-boyak-muted transition-colors hover:text-boyak-ink lg:mb-3 lg:text-2xl"
       aria-label="이전 화면으로 돌아가기"
     >
-      <ChevronLeft className="size-6 lg:size-4" strokeWidth={2.5} aria-hidden="true" />
+      <ChevronLeft className="size-8" strokeWidth={2.8} aria-hidden="true" />
       뒤로
     </button>
   );

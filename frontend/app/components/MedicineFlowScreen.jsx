@@ -88,18 +88,18 @@ function MedicineFlowScreen({
       </div>
 
       {/* Desktop step bar */}
-      <div className="mb-8 hidden gap-3 md:grid md:grid-cols-4 lg:mb-3 lg:gap-2 xl:grid-cols-7" aria-label="약 복용 안전 확인 단계">
+      <div className="mb-8 hidden w-full gap-3 md:grid md:grid-cols-4 lg:mb-4 lg:gap-3" aria-label="약 복용 안전 확인 단계">
         {medicineSteps.map((label, index) => (
           <div
             key={label}
-            className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
+            className={`flex min-h-16 w-full items-center justify-center rounded-2xl border px-4 text-center text-base font-black leading-tight lg:min-h-14 lg:px-4 lg:text-lg xl:min-h-16 xl:text-xl ${
               index <= currentIndex
                 ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
             aria-current={index === currentIndex ? "step" : undefined}
           >
-            <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-5 lg:text-xs">
+            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-blue text-sm text-white lg:size-8 lg:text-base">
               {index + 1}
             </span>
             {label}
@@ -130,7 +130,7 @@ function MedicineFlowScreen({
       )}
 
       {step === "review" && (
-        <div className="flex flex-col gap-4">
+        <div className="mx-auto flex w-full flex-col gap-4 lg:pt-2">
           {/* 헤더 */}
           <div className="flex items-center justify-between">
             <p className="text-xl font-black text-boyak-ink">확인된 약 {normalizeItems.length}개</p>
@@ -187,7 +187,7 @@ function MedicineFlowScreen({
       )}
 
       {step === "add" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
+        <div className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8">
           <StepHeader
             icon={<Plus className="size-12 text-boyak-blue" />}
             title="집에 있는 다른 약도 추가할까요?"
@@ -234,7 +234,7 @@ function MedicineFlowScreen({
       )}
 
       {step === "herbal" && (
-        <div className="rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-5">
+        <div className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8">
           <StepHeader
             icon={<Leaf className="size-12 text-boyak-green" />}
             title="나이와 한약 복용 여부를 알려주세요"
@@ -255,7 +255,7 @@ function MedicineFlowScreen({
           </label>
           <div className="grid gap-4 md:grid-cols-2 lg:gap-3">
             <button
-              className={`min-h-32 rounded-2xl border-2 px-6 text-4xl font-black lg:min-h-20 lg:text-3xl ${
+              className={`min-h-32 rounded-2xl border-2 px-6 text-4xl font-black lg:min-h-32 lg:text-4xl ${
                 hasHerbalMedicine === true ? "border-boyak-green bg-[#EDF9F1] text-boyak-green" : "border-[#30343B] bg-white"
               }`}
               type="button"
@@ -264,7 +264,7 @@ function MedicineFlowScreen({
               예
             </button>
             <button
-              className={`min-h-32 rounded-2xl border-2 px-6 text-4xl font-black lg:min-h-20 lg:text-3xl ${
+              className={`min-h-32 rounded-2xl border-2 px-6 text-4xl font-black lg:min-h-32 lg:text-4xl ${
                 hasHerbalMedicine === false ? "border-boyak-green bg-[#EDF9F1] text-boyak-green" : "border-[#30343B] bg-white"
               }`}
               type="button"
@@ -312,11 +312,11 @@ function CaptureStep({
   onResetPhotos,
 }) {
   return (
-    <div className="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+    <div className="mx-auto w-full lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
       <input ref={cameraInputRef} className="hidden" type="file" accept="image/*" capture="environment" onChange={onImageChange} />
       <input ref={galleryInputRef} className="hidden" type="file" accept="image/*" multiple onChange={onImageChange} />
       <button
-        className="mb-8 flex min-h-[360px] w-full flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-[#D6DFEE] bg-[#FBFCFE] p-7 text-center shadow-soft sm:p-10 lg:mb-3 lg:min-h-0 lg:flex-1 lg:p-6"
+        className="mb-8 flex min-h-[360px] w-full flex-col items-center justify-center rounded-[28px] border-2 border-dashed border-[#D6DFEE] bg-[#FBFCFE] p-7 text-center shadow-soft sm:p-10 lg:mb-4 lg:min-h-[clamp(300px,calc(100dvh-470px),480px)] lg:p-8 xl:min-h-[clamp(320px,calc(100dvh-470px),520px)]"
         type="button"
         onClick={() => cameraInputRef.current?.click()}
         aria-label="약 봉투나 처방전 사진 촬영하기"
@@ -350,9 +350,9 @@ function CaptureStep({
         )}
       </button>
 
-      <div className="grid gap-4 lg:grid-cols-3 lg:gap-3">
+      <div className="grid gap-4 lg:grid-cols-3 lg:gap-5">
         <button
-          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-blue px-8 text-xl font-black text-white lg:min-h-16 lg:text-xl"
+          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-blue px-8 text-xl font-black text-white lg:min-h-[clamp(72px,8vh,84px)] lg:text-2xl"
           type="button"
           onClick={() => cameraInputRef.current?.click()}
         >
@@ -360,7 +360,7 @@ function CaptureStep({
           {photoPreviews.length ? "더 찍기" : "사진 촬영"}
         </button>
         <button
-          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg border border-boyak-line bg-boyak-field px-8 text-xl font-black lg:min-h-16 lg:text-xl"
+          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg border border-boyak-line bg-boyak-field px-8 text-xl font-black lg:min-h-[clamp(72px,8vh,84px)] lg:text-2xl"
           type="button"
           onClick={() => galleryInputRef.current?.click()}
         >
@@ -368,7 +368,7 @@ function CaptureStep({
           갤러리 여러 장 선택
         </button>
         <button
-          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-green px-8 text-xl font-black text-white disabled:bg-boyak-line disabled:text-boyak-muted lg:min-h-16 lg:text-xl"
+          className="inline-flex min-h-[88px] items-center justify-center gap-3 rounded-lg bg-boyak-green px-8 text-xl font-black text-white disabled:bg-boyak-line disabled:text-boyak-muted lg:min-h-[clamp(72px,8vh,84px)] lg:text-2xl"
           type="button"
           disabled={!photoPreviews.length}
           onClick={onAnalyzePhotos}
@@ -477,7 +477,7 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
 
   const drugSummary = allDrugNames.join(" · ") + (hasHerbal ? " + 한약" : "");
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mx-auto flex w-full flex-col gap-4 lg:pt-2">
       {/* 헤더 */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-2xl font-black text-boyak-ink">약 복용 안전 확인 결과</h2>
@@ -534,14 +534,14 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
       {/* 하단 버튼 */}
       <div className="grid grid-cols-2 gap-3 pt-1">
         <button
-          className="inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl border-2 border-boyak-line bg-white text-xl font-black lg:min-h-14"
+          className="inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl border-2 border-boyak-line bg-white text-xl font-black lg:min-h-24 lg:text-2xl"
           type="button"
           onClick={onRestart}
         >
           <Camera className="size-6" aria-hidden="true" /> 다시 촬영하기
         </button>
         <button
-          className="inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-boyak-ink px-4 text-xl font-black text-white lg:min-h-14"
+          className="inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl bg-boyak-ink px-4 text-xl font-black text-white lg:min-h-24 lg:text-2xl"
           type="button"
           onClick={onAddMore}
         >

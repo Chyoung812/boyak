@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ChevronRight,
   HomeIcon,
   Hospital,
   ListChecks,
@@ -735,7 +736,7 @@ export default function Home() {
       </button>
 
       {/* Header */}
-      <header className="flex min-h-28 flex-wrap items-center justify-between gap-3 border-b-[3px] border-boyak-blue px-5 py-3 sm:min-h-36 sm:px-10 lg:min-h-28 lg:px-20 lg:py-3 xl:px-24">
+      <header className="flex min-h-28 flex-wrap items-center justify-between gap-3 border-b-[5px] border-[#4F7CFF] bg-[#F7F8FA] px-5 py-3 sm:min-h-36 sm:px-10 lg:min-h-28 lg:px-20 lg:py-3 xl:px-24">
         <button
           className="inline-flex min-h-10 items-center"
           type="button"
@@ -750,19 +751,19 @@ export default function Home() {
         </button>
         <nav className="flex items-center justify-end gap-2 sm:gap-4" aria-label="상단 메뉴">
           <button
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-base font-black text-boyak-muted sm:min-h-14 sm:text-xl lg:min-h-10 lg:text-lg"
+            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-lg px-3 text-xl font-black text-boyak-muted sm:min-h-16 sm:text-2xl lg:min-h-14 lg:px-4 lg:text-2xl"
             type="button"
             onClick={goHome}
           >
-            <HomeIcon className="size-6" aria-hidden="true" />
+            <HomeIcon className="size-7 lg:size-8" aria-hidden="true" />
             <span>홈</span>
           </button>
           <button
-            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-2 text-base font-black text-boyak-muted sm:min-h-14 sm:text-xl lg:min-h-10 lg:text-lg"
+            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-lg px-3 text-xl font-black text-boyak-muted sm:min-h-16 sm:text-2xl lg:min-h-14 lg:px-4 lg:text-2xl"
             type="button"
             onClick={openSettings}
           >
-            <Settings className="size-6" aria-hidden="true" />
+            <Settings className="size-7 lg:size-8" aria-hidden="true" />
             <span>설정</span>
           </button>
         </nav>
@@ -772,11 +773,11 @@ export default function Home() {
       <main
         className={
           view === "home"
-            ? "px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:px-24 lg:py-6"
+            ? "bg-[#F7F8FA] px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:px-24 lg:py-6"
             : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
         }
       >
-        {view === "home" && <HomeSection onNavigate={setView} onSpeak={speak} voiceGuideStyle={voiceGuideStyle} />}
+        {view === "home" && <HomeSection onNavigate={setView} />}
 
         {view === "settings" && (
           <SettingsScreen
@@ -982,56 +983,56 @@ function LongLoadingDoctorTip({ isActive, voiceGuideStyle, onSpeak }) {
   );
 }
 
-function HomeSection({ onNavigate, onSpeak, voiceGuideStyle }) {
-  const [tipIdx, setTipIdx] = useState(0);
-  useEffect(() => {
-    setTipIdx(Math.floor(Math.random() * doctorTips.length));
-  }, []);
-  const tip = doctorTips[tipIdx];
+function HomeSection({ onNavigate }) {
   return (
-    <section aria-labelledby="home-title">
-      <div className="mb-5 sm:mb-7">
-        <p className="mb-2 text-sm font-extrabold text-boyak-muted sm:text-base">독거 어르신 복약 도우미</p>
-        <h1 id="home-title" className="mb-2 text-3xl font-black leading-tight sm:text-4xl">
+    <section className="flex min-h-[calc(100vh-190px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
+      <div className="mb-4 sm:mb-5 lg:mb-6">
+        <p className="mb-2 text-xl font-black text-[#4F7CFF] sm:text-2xl lg:text-3xl">어르신 건강 지키미</p>
+        <h1 id="home-title" className="mb-2 text-4xl font-black leading-tight text-[#10234A] sm:text-5xl lg:text-6xl">
           안녕하세요!
         </h1>
-        <p className="text-xl font-bold leading-relaxed text-boyak-muted sm:text-2xl">오늘도 안전하게 약을 확인해요</p>
+        <p className="max-w-[900px] text-xl font-bold leading-relaxed text-[#4D5D7C] sm:text-2xl lg:text-[1.65rem]">
+          약부터 병원 길찾기, 비용 확인까지 한 번에 도와드려요
+        </p>
       </div>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-3 lg:gap-8" aria-label="주요 기능">
+      <div className="grid flex-1 gap-4 md:grid-cols-3 lg:gap-6" aria-label="주요 기능">
         {featureCards.map((feature) => {
           const Icon = featureIconMap[feature.id];
           return (
             <button
               key={feature.id}
-              className={`${feature.color} flex min-h-[118px] flex-col items-center justify-center rounded-xl px-4 py-4 text-center text-white shadow-soft transition-transform active:scale-[0.98] sm:min-h-[170px] lg:min-h-[250px] lg:px-6 lg:py-8`}
+              className="flex min-h-[230px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-5 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[290px] lg:h-full lg:min-h-0 lg:px-7 lg:py-7"
+              style={{
+                backgroundColor: feature.cardColor,
+                borderColor: `${feature.titleColor}33`,
+              }}
               type="button"
               onClick={() => onNavigate(feature.id)}
             >
-              <span className="mb-3 text-3xl font-black leading-none lg:mb-6 lg:text-4xl">{feature.title}</span>
-              <span className="grid size-14 place-items-center rounded-full bg-[#FFE68C] text-boyak-blue sm:size-20 lg:size-24">
-                <Icon className="size-8 sm:size-10 lg:size-12" strokeWidth={2.8} aria-hidden="true" />
+              <span className="text-3xl font-black leading-none sm:text-4xl lg:text-[2.6rem]" style={{ color: feature.titleColor }}>
+                {feature.title}
               </span>
-              <span className="mt-3 text-lg font-black leading-snug sm:text-xl lg:mt-6 lg:text-2xl">{feature.copy}</span>
+              <span
+                className="grid size-24 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-32 lg:size-36 xl:size-40"
+                style={{ color: feature.iconColor }}
+              >
+                <Icon className="size-9 sm:size-12 lg:size-14 xl:size-16" strokeWidth={2.8} aria-hidden="true" />
+              </span>
+              <span className="whitespace-pre-line text-xl font-black leading-relaxed text-[#10234A] sm:text-2xl lg:text-[1.65rem]">
+                {feature.copy}
+              </span>
+              <span
+                className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl px-5 text-xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-16 sm:text-2xl lg:min-h-16 lg:text-[1.55rem]"
+                style={{ backgroundColor: feature.buttonColor }}
+              >
+                {feature.action}
+                <ChevronRight className="size-7 sm:size-8 lg:size-9" strokeWidth={3} aria-hidden="true" />
+              </span>
             </button>
           );
         })}
       </div>
-
-      <aside className="flex flex-col gap-4 rounded-xl border border-[#C8DAF7] bg-[#EDF4FF] p-4 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-        <div className="min-w-0 flex-1">
-          <h2 className="mb-1 text-base font-black text-boyak-blue sm:text-lg">약손 박사의 한마디:</h2>
-          <p className="text-lg font-extrabold leading-relaxed sm:text-xl lg:text-2xl">{tip.summary}</p>
-          <p className="mt-1 text-base font-bold leading-relaxed text-boyak-muted sm:text-lg">{tip.detail}</p>
-        </div>
-        <button
-          className="min-h-14 shrink-0 rounded-lg bg-boyak-blue px-6 text-lg font-black text-white sm:text-xl lg:min-h-[64px] lg:px-9"
-          type="button"
-          onClick={() => onSpeak(voiceGuideStyle === "simple" ? tip.summary : tip.detail)}
-        >
-          자세히 듣기
-        </button>
-      </aside>
     </section>
   );
 }
