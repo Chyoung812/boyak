@@ -114,7 +114,7 @@ function CostEstimateScreen({
 
               <div className="mt-5 grid gap-3 rounded-[22px] bg-[#f1f4fa] p-4 md:grid-cols-[1fr_auto] md:items-center">
                 <p className="text-base font-bold leading-relaxed text-[#626260]">
-                  주사, 초음파 검사처럼 추가로 권유받는 항목은 급여/비급여와 금액 차이가 커서 따로 확인하는 게 안전해요.
+                  추가 검사·치료를 권유받으면 먼저 급여 적용 여부와 병원 창구 예상 금액을 확인하세요.
                 </p>
                 <button
                   className="min-h-14 rounded-[18px] bg-[#111111] px-6 text-lg font-black text-white shadow-[0_12px_24px_rgba(17,17,17,0.14)] transition hover:bg-boyak-orange"
@@ -134,11 +134,11 @@ function CostEstimateScreen({
             aria-labelledby="cost-step-2"
           >
             <StepLabel number="2" title="많이 물어보는 비용" />
-            <IntroCard titleId="cost-step-2" eyebrow="COST QUESTIONS" title="검사·치료비, 이것만 먼저 물어보세요" body="공공데이터와 급여기준으로 자주 헷갈리는 항목을 미리 정리했어요. 실제 금액은 병원·부위·횟수에 따라 달라질 수 있어요." />
+            <IntroCard titleId="cost-step-2" eyebrow="COVERED COST QUESTIONS" title="급여 항목, 이것만 먼저 확인하세요" body="급여기준으로 설명 가능한 기본 항목만 정리했어요. 실제 금액은 병원·부위·촬영 횟수에 따라 달라질 수 있어요." />
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="mx-auto grid max-w-[820px] gap-4 md:grid-cols-2">
               {commonCostQuestions.map((item) => (
-                <article key={item.title} className="rounded-[24px] border border-[#dedbd6] bg-white p-5 shadow-[0_10px_28px_rgba(17,17,17,0.05)]">
+                <article key={item.title} className="flex min-h-[260px] flex-col rounded-[24px] border border-[#dedbd6] bg-white p-6 shadow-[0_10px_28px_rgba(17,17,17,0.05)]">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="mb-1 text-sm font-black tracking-[0.12em] text-boyak-orange">{item.type}</p>
@@ -152,7 +152,7 @@ function CostEstimateScreen({
                   <p className="mt-4 text-base font-bold leading-relaxed text-[#626260] lg:text-sm">
                     {item.guide}
                   </p>
-                  <p className="mt-3 rounded-[16px] bg-[#f1f4fa] p-3 text-sm font-bold leading-relaxed text-[#626260]">
+                  <p className="mt-auto rounded-[16px] bg-[#f1f4fa] p-3 text-sm font-bold leading-relaxed text-[#626260]">
                     물어볼 말: {item.question}
                   </p>
                 </article>
@@ -163,7 +163,7 @@ function CostEstimateScreen({
               <div>
                 <h3 className="text-xl font-black text-[#111111]">병원 창구에서 이렇게 확인하세요</h3>
                 <p className="mt-2 text-base font-bold leading-relaxed text-[#626260]">
-                  “이 검사는 급여인가요, 비급여인가요? 1회 금액과 예상 횟수는요? 급여 대안이 있나요?”
+                  “오늘 하는 검사·치료가 급여 적용되는 항목인가요? 촬영 부위나 횟수가 늘면 병원비가 얼마나 달라지나요?”
                 </p>
               </div>
               <button
