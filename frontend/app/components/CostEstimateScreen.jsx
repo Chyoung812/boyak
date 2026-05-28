@@ -8,23 +8,18 @@ import {
   costFlowSteps,
   treatmentCostDetails,
   treatmentCosts,
-  treatmentOptions,
 } from "../constants";
 import BackButton from "./BackButton";
 import StepLabel from "./StepLabel";
 
 function CostEstimateScreen({
   step,
-  selectedTreatment,
   onBack,
   onStepChange,
-  onSelectTreatment,
 }) {
   const costStepKeys = ["estimate", "chat"];
   const currentIndex = Math.max(0, costStepKeys.indexOf(step));
   const currentStepLabel = costFlowSteps[currentIndex] ?? costFlowSteps[0];
-  const selectedCost = treatmentCosts[selectedTreatment];
-  const selectedDetail = treatmentCostDetails[selectedTreatment] ?? treatmentCostDetails["기타 문의"];
 
   const firstVisitItems = [
     "진찰만",
@@ -84,87 +79,52 @@ function CostEstimateScreen({
             <StepLabel number="1" title="첫 방문 비용" />
             <IntroCard titleId="cost-step-1" />
 
-            <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="rounded-[26px] border border-[#dedbd6] bg-white p-4 lg:p-5">
-                <p className="mb-3 text-sm font-black tracking-[0.16em] text-[#7b7b78]">STEP 1</p>
-                <h3 className="mb-4 text-2xl font-black tracking-[-0.03em] text-[#111111] lg:text-xl">
-                  먼저 내 경우를 고르세요
-                </h3>
-                <div className="grid gap-3">
-                  {treatmentOptions.map((treatment) => {
-                    const isSelected = selectedTreatment === treatment;
-                    const detail = treatmentCostDetails[treatment];
-                    return (
-                      <button
-                        key={treatment}
-                        className={`group rounded-[20px] border px-5 py-4 text-left transition active:scale-[0.985] lg:py-3 ${
-                          isSelected
-                            ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange shadow-[0_10px_24px_rgba(240,131,18,0.10)]"
-                            : "border-[#dedbd6] bg-white text-[#111111] hover:border-[#FFD5B0]"
-                        }`}
-                        type="button"
-                        aria-pressed={isSelected}
-                        onClick={() => onSelectTreatment(treatment)}
-                      >
-                        <span className="block text-xl font-black leading-tight tracking-[-0.03em] lg:text-lg">{treatment}</span>
-                        <span className="mt-1.5 block text-sm font-extrabold leading-snug text-[#626260] lg:text-sm">
-                          {detail?.subtitle}
-                        </span>
-                      </button>
-                    );
-                  })}
+            <section className="rounded-[28px] border border-[#dedbd6] bg-white p-5 lg:p-6" aria-labelledby="first-visit-cases">
+              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+                <div>
+                  <p className="mb-2 text-sm font-black tracking-[0.16em] text-boyak-orange">대표 3가지 경우</p>
+                  <h3 id="first-visit-cases" className="text-3xl font-black tracking-[-0.04em] text-[#111111] lg:text-2xl">
+                    처음 가면 보통 이 정도만 먼저 보세요
+                  </h3>
                 </div>
+                <span className="rounded-full bg-[#ecfdf3] px-4 py-2 text-sm font-black text-[#16804D]">병원 창구 결제 기준</span>
               </div>
 
-              <div className="grid gap-4">
-                <div className="rounded-[26px] border border-[#bfe8d0] bg-white p-5 shadow-[0_16px_44px_rgba(22,128,77,0.08)] lg:p-5">
-                  <div className="mb-4 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-black tracking-[0.16em] text-[#16804D]">STEP 2</p>
-                      <h3 className="mt-1 text-2xl font-black tracking-[-0.03em] text-[#111111] lg:text-xl">
-                        선택한 경우 예상
-                      </h3>
-                    </div>
-                    <span className="rounded-full bg-[#ecfdf3] px-3 py-1 text-sm font-black text-[#16804D]">급여 기준</span>
-                  </div>
-                  <div className="rounded-[24px] bg-gradient-to-br from-[#e9fff2] to-[#f7fffb] p-5 text-center text-3xl font-black leading-tight tracking-[-0.045em] text-[#16804D] shadow-[inset_0_0_0_1px_rgba(191,232,208,0.9)] lg:text-3xl">
-                    {selectedCost}
-                  </div>
-                  <div className="mt-4 rounded-[20px] border border-[#bfe8d0] bg-[#fbfffd] p-4">
-                    <p className="text-lg font-black text-[#111111]">{selectedTreatment}</p>
-                    <p className="mt-2 text-base font-extrabold leading-relaxed text-[#16804D]">
-                      {selectedDetail.range}
-                    </p>
-                    <p className="mt-2 text-sm font-bold leading-relaxed text-[#626260]">
-                      {selectedDetail.note}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-[26px] border border-[#dedbd6] bg-white p-5 lg:p-5">
-                  <p className="mb-3 text-sm font-black tracking-[0.16em] text-[#7b7b78]">한눈에 보기</p>
-                  <div className="grid gap-2">
-                    {firstVisitItems.map((item) => (
-                      <div key={item} className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[16px] bg-[#f7f6f3] px-4 py-3">
-                        <p className="min-w-0 text-base font-black leading-snug text-[#111111] lg:text-sm">{item}</p>
-                        <p className="whitespace-nowrap text-base font-black text-boyak-orange lg:text-sm">{treatmentCosts[item]}</p>
+              <div className="grid gap-4 lg:grid-cols-3">
+                {firstVisitItems.map((item, index) => {
+                  const detail = treatmentCostDetails[item];
+                  return (
+                    <article key={item} className="flex min-h-[230px] flex-col rounded-[24px] border border-[#dedbd6] bg-[#fbfaf8] p-5 shadow-[0_8px_22px_rgba(17,17,17,0.04)]">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-boyak-orange text-lg font-black text-white">
+                          {index + 1}
+                        </span>
+                        <h4 className="text-xl font-black leading-tight tracking-[-0.03em] text-[#111111] lg:text-lg">{item}</h4>
                       </div>
-                    ))}
-                  </div>
-                  <p className="mt-3 rounded-[16px] bg-[#f1f4fa] p-3 text-base font-bold leading-relaxed text-[#626260] lg:text-sm">
-                    주사, 추가 촬영, 특수치료, 야간/공휴일 가산은 병원마다 달라요.
-                  </p>
-                </div>
+                      <p className="rounded-[18px] bg-[#FFF3E8] px-4 py-4 text-2xl font-black leading-tight text-boyak-orange lg:text-xl">
+                        {treatmentCosts[item]}
+                      </p>
+                      <p className="mt-4 text-base font-bold leading-relaxed text-[#626260] lg:text-sm">
+                        {detail.note}
+                      </p>
+                    </article>
+                  );
+                })}
+              </div>
 
+              <div className="mt-5 grid gap-3 rounded-[22px] bg-[#f1f4fa] p-4 md:grid-cols-[1fr_auto] md:items-center">
+                <p className="text-base font-bold leading-relaxed text-[#626260]">
+                  주사, MRI, 도수치료, 체외충격파처럼 추가로 권유받는 치료는 금액 차이가 커서 따로 확인하는 게 안전해요.
+                </p>
                 <button
-                  className="min-h-14 rounded-[18px] bg-[#111111] px-5 text-xl font-black text-white shadow-[0_14px_28px_rgba(17,17,17,0.16)] transition hover:-translate-y-0.5 hover:bg-boyak-orange lg:min-h-12 lg:text-lg"
+                  className="min-h-14 rounded-[18px] bg-[#111111] px-6 text-lg font-black text-white shadow-[0_12px_24px_rgba(17,17,17,0.14)] transition hover:bg-boyak-orange"
                   type="button"
                   onClick={() => onStepChange("chat")}
                 >
                   많이 물어보는 비용 보기
                 </button>
               </div>
-            </div>
+            </section>
           </section>
         )}
 
