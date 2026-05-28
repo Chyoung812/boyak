@@ -510,22 +510,31 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
       </div>
 
       {/* 구체적 경고 이유 */}
-      {alerts.length > 0 && (
-        <div className="grid gap-2">
-          {alerts.map((alert, i) => (
-            <div key={i} className={`flex items-start gap-3 rounded-2xl px-5 py-4 ${
-              alert.level === "danger" ? "bg-[#FFF0F0]" : "bg-[#FFF8E8]"
-            }`}>
-              <span className="mt-0.5 text-xl">{alert.level === "danger" ? "🚫" : "⚠️"}</span>
-              <p className={`text-base font-bold leading-relaxed ${
-                alert.level === "danger" ? "text-boyak-red" : "text-[#8A5A00]"
+      {alerts.length > 0 && (() => {
+        const seen = new Set();
+        const uniqueAlerts = alerts.filter((alert) => {
+          const key = alert.simple_reason || alert.title;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        return (
+          <div className="grid gap-2">
+            {uniqueAlerts.map((alert, i) => (
+              <div key={i} className={`flex items-start gap-3 rounded-2xl px-5 py-4 ${
+                alert.level === "danger" ? "bg-[#FFF0F0]" : "bg-[#FFF8E8]"
               }`}>
-                {alert.simple_reason || alert.title}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
+                <span className="mt-0.5 text-xl">{alert.level === "danger" ? "🚫" : "⚠️"}</span>
+                <p className={`text-base font-bold leading-relaxed ${
+                  alert.level === "danger" ? "text-boyak-red" : "text-[#8A5A00]"
+                }`}>
+                  {alert.simple_reason || alert.title}
+                </p>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* 한약 + 추가 노트 */}
       {(hasHerbal || notes.length > 0) && (
