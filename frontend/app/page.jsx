@@ -968,11 +968,11 @@ function HomeSection({ onNavigate }) {
   return (
     <section className="flex min-h-[calc(100vh-190px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
       <div className="mb-4 sm:mb-5 lg:mb-6">
-        <p className="mb-2 text-xl font-black text-[#4F7CFF] sm:text-2xl lg:text-3xl">어르신 건강 지키미</p>
-        <h1 id="home-title" className="mb-2 text-4xl font-black leading-tight text-[#10234A] sm:text-5xl lg:text-6xl">
+        <p className="mb-2 text-2xl font-black text-[#4F7CFF] sm:text-3xl lg:text-4xl">어르신 건강 지키미</p>
+        <h1 id="home-title" className="mb-2 text-5xl font-black leading-tight text-[#10234A] sm:text-6xl lg:text-7xl">
           안녕하세요!
         </h1>
-        <p className="max-w-[900px] text-xl font-bold leading-relaxed text-[#4D5D7C] sm:text-2xl lg:text-[1.65rem]">
+        <p className="max-w-[1100px] text-2xl font-bold leading-relaxed text-[#4D5D7C] sm:text-3xl lg:text-[2rem]">
           약부터 병원 길찾기, 비용 확인까지 한 번에 도와드려요
         </p>
       </div>
@@ -983,7 +983,7 @@ function HomeSection({ onNavigate }) {
           return (
             <button
               key={feature.id}
-              className="flex min-h-[230px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-5 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[290px] lg:min-h-[clamp(540px,56vh,600px)] lg:px-7 lg:py-7"
+              className="flex min-h-[260px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-6 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[330px] lg:min-h-[clamp(540px,56vh,600px)] lg:px-7 lg:py-8"
               style={{
                 backgroundColor: feature.cardColor,
                 borderColor: `${feature.titleColor}33`,
@@ -991,24 +991,24 @@ function HomeSection({ onNavigate }) {
               type="button"
               onClick={() => onNavigate(feature.id)}
             >
-              <span className="text-3xl font-black leading-none sm:text-4xl lg:text-[2.6rem]" style={{ color: feature.titleColor }}>
+              <span className="text-4xl font-black leading-none sm:text-5xl lg:text-[3.1rem]" style={{ color: feature.titleColor }}>
                 {feature.title}
               </span>
               <span
-                className="grid size-24 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-32 lg:size-36 xl:size-40"
+                className="grid size-28 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-36 lg:size-40 xl:size-44"
                 style={{ color: feature.iconColor }}
               >
-                <Icon className="size-9 sm:size-12 lg:size-14 xl:size-16" strokeWidth={2.8} aria-hidden="true" />
+                <Icon className="size-11 sm:size-14 lg:size-16 xl:size-20" strokeWidth={2.8} aria-hidden="true" />
               </span>
-              <span className="whitespace-pre-line text-xl font-black leading-relaxed text-[#10234A] sm:text-2xl lg:text-[1.65rem]">
+              <span className="whitespace-pre-line text-2xl font-black leading-relaxed text-[#10234A] sm:text-3xl lg:text-[1.9rem]">
                 {feature.copy}
               </span>
               <span
-                className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl px-5 text-xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-16 sm:text-2xl lg:min-h-16 lg:text-[1.55rem]"
+                className="inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-xl px-5 text-2xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-20 sm:text-3xl lg:min-h-20 lg:text-[1.8rem]"
                 style={{ backgroundColor: feature.buttonColor }}
               >
                 {feature.action}
-                <ChevronRight className="size-7 sm:size-8 lg:size-9" strokeWidth={3} aria-hidden="true" />
+                <ChevronRight className="size-8 sm:size-9 lg:size-10" strokeWidth={3} aria-hidden="true" />
               </span>
             </button>
           );
