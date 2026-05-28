@@ -29,6 +29,7 @@ node_modules/
 
 # Database (DUR 인덱스는 Render 배포용으로 추적)
 *.sqlite3
+*.sqlite3.gz
 !backend/data/processed/dur_index.sqlite3
 
 # OCR experiments / local media

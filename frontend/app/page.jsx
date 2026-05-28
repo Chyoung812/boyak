@@ -105,9 +105,8 @@ export default function Home() {
   const [hospitalDepartment, setHospitalDepartment] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [selectedHomeMedicines, setSelectedHomeMedicines] = useState([]);
-  const [costStep, setCostStep] = useState("body");
-  const [selectedCostBody, setSelectedCostBody] = useState("허리");
-  const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 약 처방 가능");
+  const [costStep, setCostStep] = useState("estimate");
+  const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 처방전 받을 수 있음");
   const [fontSizeLevel, setFontSizeLevel] = useState("normal");
   const [voiceGuideStyle, setVoiceGuideStyle] = useState("friendly");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -239,7 +238,7 @@ export default function Home() {
     setHospitalDepartment("");
     setIsHospitalLoading(false);
     setSelectedHomeMedicines([]);
-    setCostStep("body");
+    setCostStep("estimate");
   }, [stopSpeaking]);
 
   // 화면이 바뀔 때마다 voiceEnabled 상태면 자동으로 음성 안내
@@ -321,16 +320,6 @@ export default function Home() {
       return isSimpleVoice ? "아픈 곳을 선택해주세요." : "아픈 곳을 말하거나 선택해주세요.";
     }
     if (view === "cost") {
-      if (costStep === "body") {
-        return isSimpleVoice
-          ? "병원비를 예상할 부위를 선택해주세요."
-          : "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.";
-      }
-      if (costStep === "treatment") {
-        return isSimpleVoice
-          ? `${selectedCostBody} 부위의 진료 흐름을 선택해주세요.`
-          : `${selectedCostBody} 부위에 대해 어떤 진료를 받을지 선택하는 화면이에요. 진찰만 볼지, 엑스레이나 물리치료까지 받을지에 따라 예상 비용이 달라집니다.`;
-      }
       if (costStep === "estimate") {
         return isSimpleVoice
           ? `예상 병원비는 ${treatmentCosts[selectedTreatment]} 정도예요.`
@@ -338,10 +327,10 @@ export default function Home() {
       }
       if (costStep === "chat") {
         return isSimpleVoice
-          ? "궁금한 병원비를 입력하거나 말해보세요."
-          : "추가로 궁금한 병원비를 물어볼 수 있는 화면이에요. 입력창에 질문을 쓰거나 음성 입력 버튼을 눌러 질문해보세요.";
+          ? "급여·비급여 병원비를 입력하거나 말해보세요."
+          : "급여·비급여 병원비를 공공데이터 기준으로 물어볼 수 있는 화면이에요. 입력창에 질문을 쓰거나 음성 입력 버튼을 눌러 질문해보세요.";
       }
-      return isSimpleVoice ? "병원비 예상 화면입니다." : "부위와 진료 흐름을 선택하면 예상 병원비를 안내합니다.";
+      return isSimpleVoice ? "병원비 예상 화면입니다." : "진료 흐름별 예상 병원비와 확인 질문을 안내합니다.";
     }
     if (view === "settings") {
       return isSimpleVoice
@@ -351,7 +340,7 @@ export default function Home() {
     return isSimpleVoice
       ? "필요한 기능을 선택해주세요."
       : "약 복용 안전 확인, 병원 길찾기, 병원비 예상 중 필요한 기능을 선택해주세요.";
-  }, [view, medicineStep, costStep, selectedCostBody, selectedTreatment, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
+  }, [view, medicineStep, costStep, selectedTreatment, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
 
   const handleMedicineBack = useCallback(() => {
     stopSpeaking();
@@ -659,14 +648,6 @@ export default function Home() {
     setRelocatedHospitals([]);
   }, []);
 
-  const handleSelectBody = useCallback(
-    (body) => {
-      stopSpeaking();
-      setSelectedCostBody(body);
-    },
-    [stopSpeaking]
-  );
-
   const handleSelectTreatment = useCallback(
     (treatment) => {
       stopSpeaking();
@@ -700,10 +681,10 @@ export default function Home() {
         return;
       }
       speak(
-        `${selectedCostBody} 부위의 ${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요."}`
+        `${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요."}`
       );
     },
-    [speak, selectedCostBody, selectedTreatment]
+    [speak, selectedTreatment]
   );
 
   const handleCostAsk = useCallback(() => {
@@ -851,14 +832,13 @@ export default function Home() {
         {view === "cost" && (
           <CostEstimateScreen
             step={costStep}
-            selectedBody={selectedCostBody}
             selectedTreatment={selectedTreatment}
             onBack={handleCostBack}
             onStepChange={handleCostStepChange}
-            onSelectBody={handleSelectBody}
             onSelectTreatment={handleSelectTreatment}
             onSpeak={handleCostSpeak}
             onAsk={handleCostAsk}
+            apiBaseUrl={API_BASE_URL}
           />
         )}
       </main>
