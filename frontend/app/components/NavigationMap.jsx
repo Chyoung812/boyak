@@ -1,8 +1,59 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Navigation, RotateCcw, Square } from "lucide-react";
 
 const TMAP_KEY = process.env.NEXT_PUBLIC_TMAP_KEY;
+const fallbackLocation = { lat: 37.566481, lon: 126.985023 };
+const geolocationOptions = { timeout: 12000, enableHighAccuracy: false, maximumAge: 60000 };
+
+async function getGeolocationPermissionState() {
+  if (!navigator.permissions?.query) return "unknown";
+  try {
+    const status = await navigator.permissions.query({ name: "geolocation" });
+    return status.state;
+  } catch {
+    return "unknown";
+  }
+}
+
+function getLocationFailureLabel(error, permissionState) {
+  if (permissionState === "denied" || error?.code === 1) {
+    return "권한 차단 — 기본 위치 사용";
+  }
+  if (error?.code === 2) {
+    return "위치 신호 없음 — 기본 위치 사용";
+  }
+  if (error?.code === 3) {
+    return "위치 확인 시간 초과 — 기본 위치 사용";
+  }
+  return "위치 확인 실패 — 기본 위치 사용";
+}
+
+async function requestBrowserLocation() {
+  if (!navigator.geolocation) {
+    return { loc: fallbackLocation, label: "기본 위치 (서울시청)", isFallback: true };
+  }
+  const permissionState = await getGeolocationPermissionState();
+  if (permissionState === "denied") {
+    return { loc: fallbackLocation, label: getLocationFailureLabel(null, permissionState), isFallback: true };
+  }
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({
+        loc: { lat: pos.coords.latitude, lon: pos.coords.longitude },
+        label: "현재 위치",
+        isFallback: false,
+      }),
+      (error) => resolve({
+        loc: fallbackLocation,
+        label: getLocationFailureLabel(error, permissionState),
+        isFallback: true,
+      }),
+      geolocationOptions
+    );
+  });
+}
 
 export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationChange, relocatedHospitals = [], isRelocatingHospital = false, onRelocatedHospitalSelect }) {
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -30,28 +81,14 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
 
   // ── Step 1: GPS 위치 획득 ──
   useEffect(() => {
-    if (!navigator.geolocation) {
-      const fallback = { lat: 37.566481, lon: 126.985023 };
-      setUserLoc(fallback);
-      setLocLabel("기본 위치 (서울시청)");
+    let cancelled = false;
+    requestBrowserLocation().then(({ loc, label }) => {
+      if (cancelled) return;
+      setUserLoc(loc);
+      setLocLabel(label);
       setIsLocating(false);
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        setUserLoc(loc);
-        setLocLabel("현재 위치 (GPS)");
-        setIsLocating(false);
-      },
-      () => {
-        const fallback = { lat: 37.566481, lon: 126.985023 };
-        setUserLoc(fallback);
-        setLocLabel("GPS 실패 — 기본 위치 사용");
-        setIsLocating(false);
-      },
-      { timeout: 8000, enableHighAccuracy: true, maximumAge: 0 }
-    );
+    });
+    return () => { cancelled = true; };
   }, []);
 
   // ── Step 2: 지도 초기화 (userLoc 준비된 뒤 실행) ──
@@ -94,6 +131,8 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
         attribution: "© OpenStreetMap contributors",
         maxZoom: 19,
       }).addTo(map);
+      requestAnimationFrame(() => map.invalidateSize());
+      setTimeout(() => map.invalidateSize(), 200);
 
       // 출발 마커
       const userIcon = L.divIcon({
@@ -215,8 +254,11 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
           onArrive();
         }
       },
-      (err) => console.error("GPS 오류:", err),
-      { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+      (error) => {
+        setInstruction(getLocationFailureLabel(error, "unknown"));
+        setIsTracking(false);
+      },
+      { timeout: 10000, enableHighAccuracy: false, maximumAge: 30000 }
     );
   }, [hospital, onSpeak, onArrive, userLoc]);
 
@@ -264,41 +306,42 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
     } finally {
       setIsGeocoding(false);
     }
-  }, [addressInput]);
+  }, [addressInput, onLocationChange]);
 
   // ── 현재 위치로 복원 ──
-  const resetToGps = useCallback(() => {
+  const resetToGps = useCallback(async () => {
     setIsLocating(true);
     setLocLabel("위치 확인 중...");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-        setUserLoc(loc);
-        setLocLabel("현재 위치 (GPS)");
-        setIsLocating(false);
-        setShowAddressInput(false);
-        onLocationChange?.(loc);
-      },
-      () => {
-        setLocLabel("GPS 실패");
-        setIsLocating(false);
-      },
-      { timeout: 8000, enableHighAccuracy: true, maximumAge: 0 }
-    );
-  }, []);
+    const { loc, label } = await requestBrowserLocation();
+    setUserLoc(loc);
+    setLocLabel(label);
+    setIsLocating(false);
+    setShowAddressInput(false);
+    onLocationChange?.(loc);
+  }, [onLocationChange]);
 
   // 확대 시 Leaflet 지도 크기 재계산
   useEffect(() => {
     if (!mapRef.current) return;
-    const timer = setTimeout(() => mapRef.current?.invalidateSize(), 50);
+    const timer = setTimeout(() => mapRef.current?.invalidateSize(), 120);
     return () => clearTimeout(timer);
   }, [isMapExpanded]);
 
+  useEffect(() => {
+    if (!mapDivRef.current || !mapRef.current || typeof ResizeObserver === "undefined") return undefined;
+
+    const observer = new ResizeObserver(() => {
+      requestAnimationFrame(() => mapRef.current?.invalidateSize());
+    });
+    observer.observe(mapDivRef.current);
+    return () => observer.disconnect();
+  }, [isMapExpanded, routeInfo]);
+
   const wrapperClass = isMapExpanded
     ? "fixed inset-2 z-[9999] flex flex-col overflow-hidden rounded-[24px] border-2 border-boyak-line bg-white shadow-2xl"
-    : "mx-auto w-full overflow-hidden rounded-[30px] border-2 border-boyak-line bg-white shadow-soft lg:flex lg:h-[calc(100dvh-450px)] lg:min-h-[280px] lg:flex-col";
+    : "mx-auto flex w-full flex-1 flex-col overflow-hidden rounded-[30px] border-2 border-boyak-line bg-white shadow-soft lg:min-h-0";
 
-  const mapHeightClass = isMapExpanded ? "flex-1 min-h-0" : "h-[320px] lg:min-h-0 lg:flex-1";
+  const mapHeightClass = isMapExpanded ? "flex-1 min-h-[280px]" : "h-[320px] lg:h-[clamp(260px,38vh,420px)]";
 
   return (
     <div className={wrapperClass}>
@@ -373,8 +416,8 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
           <p className="text-xl font-bold text-boyak-muted">{routeError}</p>
         </div>
       ) : (
-        <div className={`relative w-full ${mapHeightClass}`}>
-          <div ref={mapDivRef} className="h-full w-full" />
+        <div className={`relative w-full overflow-hidden ${mapHeightClass}`}>
+          <div ref={mapDivRef} className="absolute inset-0 h-full w-full" />
           {/* 확대/축소 토글 버튼 */}
           {!isLocating && !isRelocatingHospital && relocatedHospitals.length === 0 && (
             <button
@@ -441,21 +484,27 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
 
         <div className="grid grid-cols-2 gap-4">
           <button
-            className="min-h-[80px] rounded-2xl border-2 border-[#30343B] bg-white px-4 text-xl font-black lg:min-h-20 lg:text-xl"
+            className="inline-flex min-h-[80px] items-center justify-center gap-3 rounded-2xl border-2 border-[#30343B] bg-white px-4 text-xl font-black lg:min-h-20 lg:text-xl"
             type="button"
             onClick={onArrive}
           >
-            🔄 안내 종료
+            <RotateCcw className="size-7 text-boyak-muted" aria-hidden="true" />
+            안내 종료
           </button>
           <button
-            className={`min-h-[80px] rounded-2xl px-4 text-2xl font-black text-white transition lg:min-h-20 lg:text-2xl ${
+            className={`inline-flex min-h-[80px] items-center justify-center gap-3 rounded-2xl px-4 text-2xl font-black text-white transition lg:min-h-20 lg:text-2xl ${
               isTracking ? "bg-[#d32f2f]" : "bg-boyak-blue"
             } disabled:opacity-40`}
             type="button"
             onClick={isTracking ? stopTracking : startTracking}
             disabled={!!routeError || isLocating}
           >
-            {isLocating ? "위치 확인 중..." : isTracking ? "⏹ 안내 정지" : "🚀 길안내 시작"}
+            {isTracking ? (
+              <Square className="size-7" fill="currentColor" aria-hidden="true" />
+            ) : (
+              <Navigation className="size-7" fill="currentColor" aria-hidden="true" />
+            )}
+            {isLocating ? "위치 확인 중..." : isTracking ? "안내 정지" : "길안내 시작"}
           </button>
         </div>
       </div>

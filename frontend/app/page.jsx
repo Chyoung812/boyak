@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Calculator,
   ChevronRight,
   HomeIcon,
-  Hospital,
   ListChecks,
   Map,
   Pill,
@@ -21,7 +21,11 @@ import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
 import BackButton from "./components/BackButton";
 
-const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
+const featureIconMap = { medicine: Pill, hospital: Map, cost: Calculator };
+const fontScaleMap = { normal: "1", large: "1.08", xlarge: "1.16" };
+const DEFAULT_COST_TREATMENT = "진찰, 엑스레이, 처방전을 받는 경우";
+const fallbackLocation = { lat: 37.566481, lon: 126.985023 };
+const geolocationOptions = { timeout: 12000, enableHighAccuracy: false, maximumAge: 60000 };
 const doctorTipAudioEntries = doctorTips.flatMap((tip, index) => {
   const tipNumber = String(index + 1).padStart(2, "0");
   return [
@@ -79,6 +83,41 @@ const STATIC_AUDIO = {
   "마이크 접근 권한이 없거나 지원하지 않는 기기입니다.": "/audio/mic_denied.wav",
 };
 
+async function getGeolocationPermissionState() {
+  if (!navigator.permissions?.query) return "unknown";
+  try {
+    const status = await navigator.permissions.query({ name: "geolocation" });
+    return status.state;
+  } catch {
+    return "unknown";
+  }
+}
+
+function getGeolocationFailureCopy(error, permissionState) {
+  if (permissionState === "denied" || error?.code === 1) {
+    return {
+      label: "서울시청 기준",
+      detail: "현재 기기의 위치 권한을 받을 수 없어 서울시청 기준으로 찾았어요.",
+    };
+  }
+  if (error?.code === 2) {
+    return {
+      label: "서울시청 기준",
+      detail: "위치 신호를 받지 못해 서울시청 기준으로 찾았어요.",
+    };
+  }
+  if (error?.code === 3) {
+    return {
+      label: "서울시청 기준",
+      detail: "위치 확인 시간이 초과되어 서울시청 기준으로 찾았어요.",
+    };
+  }
+  return {
+    label: "서울시청 기준",
+    detail: "현재 위치를 받지 못해 서울시청 기준으로 찾았어요.",
+  };
+}
+
 export default function Home() {
   const [view, setView] = useState("home");
   const [medicineStep, setMedicineStep] = useState("capture");
@@ -101,11 +140,14 @@ export default function Home() {
   const [hospitalIndex, setHospitalIndex] = useState(0);
   const [hospitals, setHospitals] = useState([]);
   const [isHospitalLoading, setIsHospitalLoading] = useState(false);
+  const [hospitalLoadingMessage, setHospitalLoadingMessage] = useState("");
+  const [hospitalLocationStatus, setHospitalLocationStatus] = useState(null);
+  const [hospitalAddressInput, setHospitalAddressInput] = useState("");
+  const [isHospitalAddressSearching, setIsHospitalAddressSearching] = useState(false);
   const [hospitalDepartment, setHospitalDepartment] = useState("");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [selectedHomeMedicines, setSelectedHomeMedicines] = useState([]);
   const [costStep, setCostStep] = useState("estimate");
-  const [selectedTreatment, setSelectedTreatment] = useState("진찰 + X-ray + 처방전 받을 수 있음");
   const [fontSizeLevel, setFontSizeLevel] = useState("normal");
   const [voiceGuideStyle, setVoiceGuideStyle] = useState("friendly");
   const [voiceEnabled, setVoiceEnabled] = useState(false);
@@ -236,6 +278,10 @@ export default function Home() {
     setHospitals([]);
     setHospitalDepartment("");
     setIsHospitalLoading(false);
+    setHospitalLoadingMessage("");
+    setHospitalLocationStatus(null);
+    setHospitalAddressInput("");
+    setIsHospitalAddressSearching(false);
     setSelectedHomeMedicines([]);
     setCostStep("estimate");
   }, [stopSpeaking]);
@@ -297,6 +343,9 @@ export default function Home() {
           : "어디가 불편하신지 알려주세요. 부위 버튼을 누르거나, 말하기 버튼으로 증상을 말씀하시면 가까운 병원을 찾아드릴게요.";
       }
       if (hospitalStep === "results") {
+        if (isHospitalLoading) {
+          return hospitalLoadingMessage || "현재 위치를 먼저 확인하고 가까운 병원을 찾고 있어요.";
+        }
         return isSimpleVoice
           ? `${recommendedDepartment} 진료를 추천해요. 첫 번째 병원이 보행자 맞춤 추천 병원입니다.`
           : `${selectedSymptom ?? "입력한 증상"}에는 ${recommendedDepartment} 진료를 추천해요. 도보 시간, 거리, 길의 형태를 보고 병원을 고르실 수 있어요. 첫 번째 병원이 보행자 맞춤 추천 병원입니다.`;
@@ -321,8 +370,8 @@ export default function Home() {
     if (view === "cost") {
       if (costStep === "estimate") {
         return isSimpleVoice
-          ? `예상 병원비는 ${treatmentCosts[selectedTreatment]} 정도예요.`
-          : `${selectedTreatment}의 예상 병원비는 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "실제 비용은 병원과 건강보험 적용 여부에 따라 달라질 수 있어요."}`;
+          ? `예상 병원비는 ${treatmentCosts[DEFAULT_COST_TREATMENT]} 정도예요.`
+          : `${DEFAULT_COST_TREATMENT}의 예상 병원비는 ${treatmentCosts[DEFAULT_COST_TREATMENT]} 정도예요. ${treatmentCostDetails[DEFAULT_COST_TREATMENT]?.note ?? "실제 비용은 병원과 건강보험 적용 여부에 따라 달라질 수 있어요."}`;
       }
       if (costStep === "chat") {
         return isSimpleVoice
@@ -339,7 +388,7 @@ export default function Home() {
     return isSimpleVoice
       ? "필요한 기능을 선택해주세요."
       : "약 복용 안전 확인, 병원 길찾기, 병원비 예상 중 필요한 기능을 선택해주세요.";
-  }, [view, medicineStep, costStep, selectedTreatment, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
+  }, [view, medicineStep, costStep, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, hospitalLoadingMessage, isHospitalLoading, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
 
   const handleMedicineBack = useCallback(() => {
     stopSpeaking();
@@ -544,17 +593,63 @@ export default function Home() {
     mapUrl: `https://map.kakao.com/link/search/${encodeURIComponent(h.name)}`,
   }), []);
 
-  const handleSelectSymptom = useCallback(
-    async (symptom) => {
-      stopSpeaking();
-      setSelectedSymptom(symptom);
-      setHospitalIndex(0);
-      setHospitalStep("results");
-      setIsHospitalLoading(true);
-      setHospitals([]);
+  const getCurrentHospitalLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      return {
+        ...fallbackLocation,
+        isFallback: true,
+        label: "기본 위치 사용",
+        detail: "현재 기기에서 위치 기능을 지원하지 않아 서울시청 기준으로 보여드려요.",
+      };
+    }
+    const permissionState = await getGeolocationPermissionState();
+    if (permissionState === "denied") {
+      const copy = getGeolocationFailureCopy(null, permissionState);
+      return {
+        ...fallbackLocation,
+        isFallback: true,
+        ...copy,
+      };
+    }
+    return new Promise((resolve) => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => resolve({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+          isFallback: false,
+          label: "현재 위치 기준",
+          detail: position.coords.accuracy
+            ? `현재 위치 기준으로 가까운 병원을 찾고 있어요. 정확도는 약 ${Math.round(position.coords.accuracy)}m예요.`
+            : "현재 위치 기준으로 가까운 병원을 찾고 있어요.",
+        }),
+        (error) => {
+          const copy = getGeolocationFailureCopy(error, permissionState);
+          resolve({
+            ...fallbackLocation,
+            isFallback: true,
+            ...copy,
+          });
+        },
+        geolocationOptions
+      );
+    });
+  }, []);
 
-      try {
-        // 증상으로 진료과 분석
+  const runHospitalSearch = useCallback(async ({ symptom, location, locationStatus }) => {
+    stopSpeaking();
+    setSelectedSymptom(symptom);
+    setHospitalIndex(0);
+    setHospitalStep("results");
+    setIsHospitalLoading(true);
+    setHospitalLocationStatus(locationStatus);
+    setHospitalLoadingMessage(
+      locationStatus?.tone === "warning"
+        ? "기본 위치 기준으로 진료과를 찾고 있어요."
+        : "증상에 맞는 진료과를 찾는 중이에요."
+    );
+    setHospitals([]);
+
+    try {
         const analyzeRes = await fetch(`${API_BASE_URL}/api/hospitals/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -563,38 +658,133 @@ export default function Home() {
         const analyzeData = await analyzeRes.json();
         const dept = analyzeData.department || "정형외과";
         setHospitalDepartment(dept);
+        setHospitalLoadingMessage(`${dept} 병원을 현재 위치에서 가까운 순으로 찾고 있어요.`);
 
-        // GPS 위치 가져오기
-        const pos = await new Promise((resolve) => {
-          if (!navigator.geolocation) {
-            resolve({ lat: 37.566481, lon: 126.985023 });
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(
-            (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude }),
-            () => resolve({ lat: 37.566481, lon: 126.985023 }),
-            { timeout: 5000 }
-          );
-        });
-
-        // 근처 병원 검색
         const nearbyRes = await fetch(`${API_BASE_URL}/api/hospitals/nearby`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ department: dept, lat: pos.lat, lon: pos.lon }),
+          body: JSON.stringify({ department: dept, lat: location.lat, lon: location.lon }),
         });
         const nearbyData = await nearbyRes.json();
         const transformed = (nearbyData.hospitals || []).map((h) => transformHospital(h, dept));
         setHospitals(transformed);
       } catch {
-        // 실패시 정적 데이터로 fallback
+        setHospitalLocationStatus((current) => current
+          ? {
+              ...current,
+              detail: `${current.detail} 백엔드 연결이 안 되어 예시 병원 목록을 보여드려요.`,
+            }
+          : {
+              tone: "warning",
+              label: "위치 기반 검색 실패",
+              detail: "백엔드 연결이 안 되어 예시 병원 목록을 보여드려요.",
+            });
         setHospitals([]);
       } finally {
         setIsHospitalLoading(false);
+        setHospitalLoadingMessage("");
       }
+  }, [stopSpeaking, transformHospital]);
+
+  const handleSelectSymptom = useCallback(
+    async (symptom) => {
+      stopSpeaking();
+      setSelectedSymptom(symptom);
+      setHospitalIndex(0);
+      setHospitalStep("results");
+      setIsHospitalLoading(true);
+      setHospitalLoadingMessage("현재 위치를 확인하는 중이에요.");
+      setHospitalLocationStatus({
+        tone: "loading",
+        label: "현재 위치 확인 중",
+        detail: "위치 권한 요청이 보이면 허용을 눌러주세요.",
+      });
+      setHospitals([]);
+
+      const location = await getCurrentHospitalLocation();
+      await runHospitalSearch({
+        symptom,
+        location,
+        locationStatus: {
+          tone: location.isFallback ? "warning" : "success",
+          label: location.label,
+          detail: location.detail,
+        },
+      });
     },
-    [stopSpeaking, transformHospital]
+    [getCurrentHospitalLocation, runHospitalSearch, stopSpeaking]
   );
+
+  const handleRetryHospitalLocation = useCallback(async () => {
+    if (!selectedSymptom) return;
+    stopSpeaking();
+    setIsHospitalLoading(true);
+    setHospitalLoadingMessage("현재 위치를 다시 확인하는 중이에요.");
+    setHospitalLocationStatus({
+      tone: "loading",
+      label: "현재 위치 다시 확인 중",
+      detail: "위치 권한 요청이 보이면 허용을 눌러주세요.",
+    });
+
+    const location = await getCurrentHospitalLocation();
+    await runHospitalSearch({
+      symptom: selectedSymptom,
+      location,
+      locationStatus: {
+        tone: location.isFallback ? "warning" : "success",
+        label: location.isFallback ? location.label : "현재 위치 기준",
+        detail: location.detail,
+      },
+    });
+  }, [getCurrentHospitalLocation, runHospitalSearch, selectedSymptom, stopSpeaking]);
+
+  const handleSearchHospitalAddress = useCallback(async (queryOverride) => {
+    const query = typeof queryOverride === "string" ? queryOverride.trim() : hospitalAddressInput.trim();
+    if (!query || !selectedSymptom) return;
+    stopSpeaking();
+    setIsHospitalAddressSearching(true);
+    setIsHospitalLoading(true);
+    setHospitalLoadingMessage("입력한 주소나 장소를 찾는 중이에요.");
+    setHospitalLocationStatus({
+      tone: "loading",
+      label: "주소 위치 확인 중",
+      detail: `"${query}" 위치를 찾고 있어요.`,
+    });
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/locations/geocode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.reason || "위치를 찾지 못했어요.");
+      }
+      setHospitalAddressInput("");
+      await runHospitalSearch({
+        symptom: selectedSymptom,
+        location: { lat: data.lat, lon: data.lon, isFallback: false },
+        locationStatus: {
+          tone: "success",
+          label: "입력한 위치 기준",
+          detail: `${data.name || query} 기준으로 가까운 병원을 찾고 있어요.`,
+        },
+      });
+    } catch (error) {
+      setHospitalLocationStatus({
+        tone: "warning",
+        label: "주소 위치 확인 실패",
+        detail: error?.message === "Failed to fetch"
+          ? "백엔드 연결이 안 되어 주소 검색을 할 수 없어요."
+          : error.message || "주소나 장소 이름을 다시 입력해 주세요.",
+      });
+      setIsHospitalLoading(false);
+      setHospitalLoadingMessage("");
+    } finally {
+      setIsHospitalAddressSearching(false);
+    }
+  }, [hospitalAddressInput, runHospitalSearch, selectedSymptom, stopSpeaking]);
 
   const handleSelectHospital = useCallback(
     (index) => {
@@ -616,6 +806,8 @@ export default function Home() {
   const handleHospitalRestart = useCallback(() => {
     stopSpeaking();
     setHospitalStep("input");
+    setHospitalLocationStatus(null);
+    setHospitalAddressInput("");
   }, [stopSpeaking]);
 
   const [relocatedHospitals, setRelocatedHospitals] = useState([]);
@@ -647,14 +839,6 @@ export default function Home() {
     setRelocatedHospitals([]);
   }, []);
 
-  const handleSelectTreatment = useCallback(
-    (treatment) => {
-      stopSpeaking();
-      setSelectedTreatment(treatment);
-    },
-    [stopSpeaking]
-  );
-
   const handleCostBack = useCallback(() => {
     stopSpeaking();
     setView("home");
@@ -673,28 +857,14 @@ export default function Home() {
     setView("settings");
   }, [stopSpeaking]);
 
-  const handleCostSpeak = useCallback(
-    (message) => {
-      if (typeof message === "string" && message.trim()) {
-        speak(message);
-        return;
-      }
-      speak(
-        `${selectedTreatment}은 ${treatmentCosts[selectedTreatment]} 정도예요. ${treatmentCostDetails[selectedTreatment]?.note ?? "건강보험 적용 여부와 병원에 따라 차이가 있을 수 있어요."}`
-      );
-    },
-    [speak, selectedTreatment]
-  );
-
-  const handleCostAsk = useCallback(() => {
-    speak("궁금한 병원비를 말씀해주세요. 예를 들어, 재방문하면 얼마인가요 라고 말할 수 있어요.");
-  }, [speak]);
-
   const displayHospitals = isHospitalLoading ? [] : (hospitals.length > 0 ? hospitals : nearbyHospitals);
   const isLongLoadingCandidate = isMedicineOcrLoading || isMedicineSafetyLoading || isHospitalLoading;
 
   return (
-    <div className={`min-h-screen bg-white text-boyak-ink font-size-${fontSizeLevel}`}>
+    <div
+      className={`min-h-screen bg-white text-boyak-ink font-size-${fontSizeLevel}`}
+      style={{ "--boyak-font-scale": fontScaleMap[fontSizeLevel] ?? fontScaleMap.normal }}
+    >
       {/* Global voice button: 빨강=재생 중 / 초록=자동안내 ON / 파랑=꺼짐 */}
       <button
         className={`fixed bottom-5 right-5 z-50 grid size-16 place-items-center rounded-full text-white shadow-soft transition active:scale-95 sm:bottom-7 sm:right-7 sm:size-20 lg:size-[72px] ${
@@ -716,9 +886,9 @@ export default function Home() {
       </button>
 
       {/* Header */}
-      <header className="flex min-h-28 flex-wrap items-center justify-between gap-3 border-b-[5px] border-[#4F7CFF] bg-[#F7F8FA] px-5 py-3 sm:min-h-36 sm:px-10 lg:min-h-28 lg:px-20 lg:py-3 xl:px-24">
+      <header className="flex min-h-[104px] flex-wrap items-center justify-between gap-3 border-b-[5px] border-[#4F7CFF] bg-white px-5 py-2 sm:min-h-[136px] sm:px-10 lg:min-h-[104px] lg:pl-20 lg:pr-12 lg:py-2 xl:pl-24 xl:pr-16">
         <button
-          className="inline-flex min-h-10 items-center"
+          className="inline-flex min-h-10 items-center border-0 bg-transparent p-0 shadow-none outline-none ring-0 focus:outline-none focus:ring-0"
           type="button"
           onClick={goHome}
           aria-label="보약 홈으로 이동"
@@ -726,24 +896,24 @@ export default function Home() {
           <img
             src="/logo.png"
             alt="보약"
-            className="h-24 w-auto object-contain sm:h-32 lg:h-24"
+            className="h-[88px] w-auto border-0 object-contain shadow-none outline-none ring-0 sm:h-[120px] lg:h-[88px]"
           />
         </button>
         <nav className="flex items-center justify-end gap-2 sm:gap-4" aria-label="상단 메뉴">
           <button
-            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-lg px-3 text-xl font-black text-boyak-muted sm:min-h-16 sm:text-2xl lg:min-h-14 lg:px-4 lg:text-2xl"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-2 text-lg font-black text-boyak-muted sm:min-h-14 sm:text-xl lg:min-h-12 lg:px-3 lg:text-xl"
             type="button"
             onClick={goHome}
           >
-            <HomeIcon className="size-7 lg:size-8" aria-hidden="true" />
+            <HomeIcon className="size-6 lg:size-7" aria-hidden="true" />
             <span>홈</span>
           </button>
           <button
-            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-lg px-3 text-xl font-black text-boyak-muted sm:min-h-16 sm:text-2xl lg:min-h-14 lg:px-4 lg:text-2xl"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg px-2 text-lg font-black text-boyak-muted sm:min-h-14 sm:text-xl lg:min-h-12 lg:px-3 lg:text-xl"
             type="button"
             onClick={openSettings}
           >
-            <Settings className="size-7 lg:size-8" aria-hidden="true" />
+            <Settings className="size-6 lg:size-7" aria-hidden="true" />
             <span>설정</span>
           </button>
         </nav>
@@ -753,10 +923,12 @@ export default function Home() {
       <main
         className={
           view === "home"
-            ? "bg-[#F7F8FA] px-5 pb-1 pt-5 sm:px-10 sm:pb-1 sm:pt-6 lg:px-24 lg:pb-0 lg:pt-6"
+            ? "bg-white px-5 pb-4 pt-5 sm:px-10 sm:pb-5 sm:pt-6 lg:px-20 lg:pb-4 lg:pt-4 xl:px-24"
             : view === "cost"
-              ? "px-4 pb-16 pt-8 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-3 xl:px-10"
-              : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
+              ? "bg-white px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-20 lg:py-3 xl:px-24"
+              : view === "hospital"
+                ? "flex min-h-[calc(100dvh-104px)] flex-col px-5 pb-8 pt-6 sm:px-10 lg:min-h-[calc(100dvh-6.5rem)] lg:overflow-y-auto lg:px-20 lg:py-2 xl:px-24"
+              : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-20 lg:py-3 xl:px-24"
         }
       >
         {view === "home" && <HomeSection onNavigate={setView} />}
@@ -816,12 +988,19 @@ export default function Home() {
             hospitals={hospitals}
             department={hospitalDepartment}
             isLoading={isHospitalLoading}
+            loadingMessage={hospitalLoadingMessage}
+            locationStatus={hospitalLocationStatus}
+            locationQuery={hospitalAddressInput}
+            isAddressSearching={isHospitalAddressSearching}
             onBack={handleHospitalBack}
             onGoHome={goHome}
             onRestart={handleHospitalRestart}
             onStepChange={handleHospitalStepChange}
             onSelectSymptom={handleSelectSymptom}
             onSelectHospital={handleSelectHospital}
+            onLocationQueryChange={setHospitalAddressInput}
+            onRetryLocation={handleRetryHospitalLocation}
+            onSearchLocation={handleSearchHospitalAddress}
             onSpeak={speak}
             onLocationChange={handleLocationChange}
             relocatedHospitals={relocatedHospitals}
@@ -833,13 +1012,8 @@ export default function Home() {
         {view === "cost" && (
           <CostEstimateScreen
             step={costStep}
-            selectedTreatment={selectedTreatment}
             onBack={handleCostBack}
             onStepChange={handleCostStepChange}
-            onSelectTreatment={handleSelectTreatment}
-            onSpeak={handleCostSpeak}
-            onAsk={handleCostAsk}
-            apiBaseUrl={API_BASE_URL}
           />
         )}
       </main>
@@ -966,24 +1140,21 @@ function LongLoadingDoctorTip({ isActive, voiceGuideStyle, onSpeak }) {
 
 function HomeSection({ onNavigate }) {
   return (
-    <section className="flex min-h-[calc(100vh-184px)] flex-col bg-[#F7F8FA]" aria-labelledby="home-title">
-      <div className="mb-4 sm:mb-5 lg:mb-5">
-        <p className="mb-2 text-3xl font-black text-[#4F7CFF] sm:text-4xl lg:text-[3rem]">어르신 건강 지키미</p>
-        <h1 id="home-title" className="mb-2 text-6xl font-black leading-tight text-[#10234A] sm:text-7xl lg:text-[5.75rem]">
-          안녕하세요!
-        </h1>
-        <p className="max-w-[1250px] text-3xl font-bold leading-relaxed text-[#4D5D7C] sm:text-4xl lg:text-[2.45rem]">
+    <section className="home-section flex min-h-[calc(100dvh-144px)] flex-col bg-white lg:min-h-[calc(100dvh-136px)]" aria-labelledby="home-title">
+      <div>
+        <h1 id="home-title" className="boyak-h3 mb-1 font-black text-[#4F7CFF]">어르신 건강 지키미</h1>
+        <p className="boyak-h4 max-w-[1250px] font-bold text-[#4D5D7C]">
           약부터 병원 길찾기, 비용 확인까지 한 번에 도와드려요
         </p>
       </div>
 
-      <div className="grid flex-1 gap-4 md:grid-cols-3 lg:gap-6" aria-label="주요 기능">
+      <div className="grid min-h-0 flex-1 gap-4 md:grid-cols-3 lg:gap-5" aria-label="주요 기능">
         {featureCards.map((feature) => {
           const Icon = featureIconMap[feature.id];
           return (
             <button
               key={feature.id}
-              className="flex min-h-[300px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-6 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[380px] lg:h-full lg:min-h-[clamp(620px,62vh,820px)] lg:px-7 lg:py-8"
+              className="home-feature-card flex min-h-[300px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-6 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[360px] lg:h-full lg:min-h-0 lg:px-6 lg:py-5 xl:px-7"
               style={{
                 backgroundColor: feature.cardColor,
                 borderColor: `${feature.titleColor}33`,
@@ -991,24 +1162,26 @@ function HomeSection({ onNavigate }) {
               type="button"
               onClick={() => onNavigate(feature.id)}
             >
-              <span className="text-5xl font-black leading-none sm:text-6xl lg:text-[3.45rem]" style={{ color: feature.titleColor }}>
-                {feature.title}
+              <span className="home-card-top flex flex-col items-center">
+                <span className="home-card-title font-black leading-none text-[#111111]">
+                  {feature.title}
+                </span>
+                <span
+                  className="home-card-icon grid place-items-center rounded-full bg-[#FFF7D6]"
+                  style={{ color: feature.iconColor }}
+                >
+                  <Icon className="home-card-svg" strokeWidth={2.8} aria-hidden="true" />
+                </span>
               </span>
-              <span
-                className="grid size-32 place-items-center rounded-full bg-[#FFF7D6] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.75),0_8px_18px_rgba(58,77,116,0.08)] sm:size-40 lg:size-48 xl:size-52"
-                style={{ color: feature.iconColor }}
-              >
-                <Icon className="size-14 sm:size-16 lg:size-20 xl:size-24" strokeWidth={2.8} aria-hidden="true" />
-              </span>
-              <span className="whitespace-pre-line text-3xl font-black leading-snug text-[#10234A] sm:text-4xl lg:text-[1.55rem] xl:text-[1.75rem]">
+              <span className="home-card-copy whitespace-pre-line font-black text-[#10234A]">
                 {feature.copy}
               </span>
               <span
-                className="inline-flex min-h-20 w-full items-center justify-center gap-3 rounded-xl px-5 text-3xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-24 sm:text-4xl lg:min-h-24 lg:text-[2rem]"
+                className="home-card-action inline-flex w-full items-center justify-center gap-3 rounded-xl px-5 font-black text-white"
                 style={{ backgroundColor: feature.buttonColor }}
               >
-                {feature.action}
-                <ChevronRight className="size-10 sm:size-11 lg:size-12" strokeWidth={3} aria-hidden="true" />
+                <span className="home-card-action-label">{feature.action}</span>
+                <ChevronRight className="home-card-chevron" strokeWidth={3} aria-hidden="true" />
               </span>
             </button>
           );
