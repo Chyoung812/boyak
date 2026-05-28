@@ -430,7 +430,7 @@ function DrugCard({ name, desc, dosage }) {
         </div>
         {desc
           ? <p className="mt-0.5 text-base font-bold text-boyak-green lg:text-sm">{desc}</p>
-          : <p className="mt-0.5 text-sm text-boyak-muted">약사 또는 의사에게 문의하세요</p>
+          : <p className="mt-0.5 text-sm text-boyak-muted">효능 정보를 확인 중이에요</p>
         }
         {dosingParts.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-2">
@@ -509,6 +509,24 @@ function ResultStep({ safetyResult, safetyError, normalizeItems = [], hasHerbalM
           <p className="mt-3 rounded-xl bg-white/60 px-4 py-2 text-sm font-bold text-boyak-red">{safetyError}</p>
         )}
       </div>
+
+      {/* 구체적 경고 이유 */}
+      {alerts.length > 0 && (
+        <div className="grid gap-2">
+          {alerts.map((alert, i) => (
+            <div key={i} className={`flex items-start gap-3 rounded-2xl px-5 py-4 ${
+              alert.level === "danger" ? "bg-[#FFF0F0]" : "bg-[#FFF8E8]"
+            }`}>
+              <span className="mt-0.5 text-xl">{alert.level === "danger" ? "🚫" : "⚠️"}</span>
+              <p className={`text-base font-bold leading-relaxed ${
+                alert.level === "danger" ? "text-boyak-red" : "text-[#8A5A00]"
+              }`}>
+                {alert.simple_reason || alert.title}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* 한약 + 추가 노트 */}
       {(hasHerbal || notes.length > 0) && (

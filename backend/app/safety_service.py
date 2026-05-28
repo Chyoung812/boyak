@@ -64,19 +64,23 @@ def _format_alert(raw: Dict[str, Any]) -> Dict[str, Any]:
         drug_a = raw.get("ingredient_name_a") or raw.get("product_name_a") or ""
         drug_b = raw.get("ingredient_name_b") or raw.get("product_name_b") or ""
         title = f"병용금기: {drug_a} + {drug_b}"
+        simple_reason = f"'{drug_a}'과 '{drug_b}'는 같이 드시면 절대 안 됩니다. 두 약이 몸 안에서 서로 방해해서 해로울 수 있어요."
     elif category == "연령금기":
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         age_val = raw.get("age_value", "")
         age_cond = raw.get("age_condition", "")
         title = f"연령금기: {drug} ({age_val} {age_cond})"
+        simple_reason = f"'{drug}'은 특별히 조심해야 하는 약이에요. 드시기 전에 꼭 확인하세요."
     elif category == "임부금기":
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         title = f"임부금기: {drug}"
+        simple_reason = f"'{drug}'은 임산부께서 드시면 위험한 약이에요."
     else:
         drug = raw.get("ingredient_name") or raw.get("product_name") or ""
         title = f"{category}: {drug}"
+        simple_reason = f"'{drug}'에 주의가 필요해요. 복용 전 약사 선생님께 이 약 이름을 보여주세요."
 
-    return {"category": category, "level": level, "title": title, "reason": reason, "raw": raw}
+    return {"category": category, "level": level, "title": title, "reason": reason, "simple_reason": simple_reason, "raw": raw}
 
 
 def _public_level(alerts: List[Dict[str, Any]]) -> str:
@@ -145,11 +149,11 @@ def check_medicine_safety(
 
     notes = []
     if has_herbal_medicine:
-        notes.append("한약 병용 중입니다. 한약-양약 상호작용을 한의사에게 확인하세요.")
+        notes.append("한약을 함께 드시면 양약과 서로 영향을 줄 수 있어요. 한의사 선생님께 꼭 말씀드리세요.")
     if has_supplement:
-        notes.append("건강기능식품 병용 중입니다. 영양소 과잉 섭취 여부를 확인하세요.")
+        notes.append("비타민이나 영양제를 함께 드실 때 같은 영양소를 너무 많이 드실 수 있어요.")
     if dispensed_days_ago is not None and dispensed_days_ago > 30:
-        notes.append(f"조제된 지 {dispensed_days_ago}일이 지났습니다. 유효기간을 확인하세요.")
+        notes.append(f"이 약을 조제하신 지 {dispensed_days_ago}일이 지났어요. 드시기 전에 유효기간을 꼭 확인해 주세요.")
 
     return _with_public_summary({
         "ok": True,
