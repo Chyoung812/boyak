@@ -172,18 +172,18 @@ function CostEstimateScreen({
       </div>
 
       {/* Desktop step bar */}
-      <div className="mb-8 hidden gap-3 md:grid md:grid-cols-4 lg:mb-3 lg:gap-2" aria-label="병원비 확인 단계">
+      <div className="mb-8 hidden w-full gap-3 md:grid md:grid-cols-4 lg:mb-6 lg:gap-3" aria-label="병원비 확인 단계">
         {costFlowSteps.map((label, index) => (
           <div
             key={label}
-            className={`min-h-16 rounded-2xl border px-3 text-base font-black lg:min-h-11 lg:rounded-xl lg:px-2 lg:text-sm ${
+            className={`flex min-h-16 w-full items-center justify-center rounded-2xl border px-4 text-center text-base font-black leading-tight lg:min-h-16 lg:px-4 lg:text-lg xl:min-h-[72px] xl:text-xl ${
               index <= currentIndex
                 ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
                 : "border-boyak-line bg-white text-boyak-muted"
             }`}
             aria-current={index === currentIndex ? "step" : undefined}
           >
-            <span className="mr-2 inline-grid size-7 place-items-center rounded-full bg-boyak-orange text-sm text-white lg:size-5 lg:text-xs">
+            <span className="mr-2 inline-grid size-7 shrink-0 place-items-center rounded-full bg-boyak-orange text-sm text-white lg:size-8 lg:text-base">
               {index + 1}
             </span>
             {label}
@@ -194,7 +194,7 @@ function CostEstimateScreen({
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:items-start lg:justify-center">
         {step === "body" && (
           <section
-            className="mx-auto w-full max-w-[760px] rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:max-w-[840px] lg:p-5"
+            className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8"
             aria-labelledby="cost-step-1"
           >
             <StepLabel number="1" title="부위 선택" />
@@ -207,7 +207,7 @@ function CostEstimateScreen({
                 return (
                   <button
                     key={body}
-                    className={`min-h-28 rounded-2xl border-2 px-5 text-3xl font-black active:scale-[0.98] lg:min-h-24 lg:text-3xl ${
+                    className={`min-h-28 rounded-2xl border-2 px-5 text-3xl font-black active:scale-[0.98] lg:min-h-[clamp(104px,14vh,144px)] lg:text-4xl ${
                       isSelected
                         ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
                         : "border-boyak-line bg-white text-[#27406A]"
@@ -226,7 +226,7 @@ function CostEstimateScreen({
             </div>
             {/* 말하기 버튼 */}
             <button
-              className={`mt-4 inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl border-2 px-5 text-xl font-black transition lg:min-h-14 lg:text-lg ${
+              className={`mt-5 inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl border-2 px-5 text-xl font-black transition lg:min-h-[clamp(76px,10vh,96px)] lg:text-2xl ${
                 isListening
                   ? "border-boyak-orange bg-[#FFF3E8] text-boyak-orange"
                   : "border-boyak-line bg-white"
@@ -246,7 +246,7 @@ function CostEstimateScreen({
 
         {step === "treatment" && (
           <section
-            className="mx-auto w-full max-w-[760px] rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:max-w-[840px] lg:p-5"
+            className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8"
             aria-labelledby="cost-step-2"
           >
             <StepLabel number="2" title="진료 흐름 선택" />
@@ -261,7 +261,7 @@ function CostEstimateScreen({
                 return (
                   <button
                     key={treatment}
-                    className={`min-h-24 rounded-2xl border-2 px-5 py-4 text-left active:scale-[0.98] md:mx-0 lg:min-h-[74px] lg:py-3 ${
+                    className={`min-h-24 rounded-2xl border-2 px-5 py-4 text-left active:scale-[0.98] md:mx-0 lg:min-h-[clamp(88px,12vh,112px)] lg:py-5 ${
                       isWide ? "md:col-span-2 md:w-full" : ""
                     } ${
                       isSelected
@@ -295,7 +295,7 @@ function CostEstimateScreen({
 
         {step === "estimate" && (
           <section
-            className="mx-auto w-full max-w-[760px] rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:max-w-[840px] lg:p-5"
+            className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8"
             aria-labelledby="cost-step-3"
           >
             <StepLabel number="3" title="예상 비용 안내" />
@@ -334,7 +334,7 @@ function CostEstimateScreen({
             </p>
             <div className="mt-4 grid gap-3">
               <button
-                className="min-h-16 rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-14 lg:text-lg"
+                className="min-h-16 rounded-2xl border-2 border-boyak-line bg-white px-5 text-xl font-black lg:min-h-[clamp(76px,10vh,96px)] lg:text-2xl"
                 type="button"
                 onClick={() => onStepChange("chat")}
               >
@@ -346,7 +346,7 @@ function CostEstimateScreen({
 
         {step === "chat" && (
           <section
-            className="mx-auto w-full max-w-[760px] rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:max-w-[840px] lg:p-5"
+            className="mx-auto w-full rounded-[28px] border-2 border-boyak-line bg-white p-6 shadow-sm lg:p-8"
             aria-labelledby="cost-step-4"
           >
             <StepLabel number="4" title="추가 설명" />
