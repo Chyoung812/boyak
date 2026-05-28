@@ -991,7 +991,7 @@ function HomeSection({ onNavigate }) {
               type="button"
               onClick={() => onNavigate(feature.id)}
             >
-              <span className="text-5xl font-black leading-none sm:text-6xl lg:text-[3.8rem]" style={{ color: feature.titleColor }}>
+              <span className="text-5xl font-black leading-none sm:text-6xl lg:text-[3.45rem]" style={{ color: feature.titleColor }}>
                 {feature.title}
               </span>
               <span
@@ -1000,11 +1000,11 @@ function HomeSection({ onNavigate }) {
               >
                 <Icon className="size-14 sm:size-16 lg:size-20 xl:size-24" strokeWidth={2.8} aria-hidden="true" />
               </span>
-              <span className="whitespace-pre-line text-3xl font-black leading-relaxed text-[#10234A] sm:text-4xl lg:text-[2.35rem]">
+              <span className="whitespace-pre-line text-3xl font-black leading-snug text-[#10234A] sm:text-4xl lg:text-[1.55rem] xl:text-[1.75rem]">
                 {feature.copy}
               </span>
               <span
-                className="inline-flex min-h-20 w-full items-center justify-center gap-3 rounded-xl px-5 text-3xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-24 sm:text-4xl lg:min-h-24 lg:text-[2.2rem]"
+                className="inline-flex min-h-20 w-full items-center justify-center gap-3 rounded-xl px-5 text-3xl font-black text-white shadow-[0_8px_18px_rgba(58,77,116,0.22)] sm:min-h-24 sm:text-4xl lg:min-h-24 lg:text-[2rem]"
                 style={{ backgroundColor: feature.buttonColor }}
               >
                 {feature.action}
