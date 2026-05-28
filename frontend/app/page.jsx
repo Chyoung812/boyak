@@ -67,8 +67,7 @@ const STATIC_AUDIO = {
   // cost - body
   "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.": "/audio/cost_body_friendly.wav",
   "병원비를 예상할 부위를 선택해주세요.": "/audio/cost_body_simple.wav",
-  // cost - common questions
-  "첫 방문 비용표에 없는 급여 기준만 따로 정리했어요. 재방문, 시간대, 나이에 따라 병원비가 달라질 수 있어요.": "/audio/cost_chat_friendly.wav",
+  // cost - common questions: friendly text changes often, so use dynamic /api/tts instead of stale static audio.
   "많이 물어보는 병원비를 확인하세요.": "/audio/cost_chat_simple.wav",
   // settings
   "설정 화면입니다. 글자 크기는 보통, 크게, 아주 크게 중에서 고를 수 있고, 음성 안내 방식은 친절하게 또는 간단하게로 바꿀 수 있어요.": "/audio/settings_friendly.wav",
