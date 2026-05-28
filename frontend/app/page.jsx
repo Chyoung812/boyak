@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronRight,
-  Calculator,
   HomeIcon,
+  Hospital,
   ListChecks,
   Map,
   Pill,
@@ -21,7 +21,7 @@ import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
 import BackButton from "./components/BackButton";
 
-const featureIconMap = { medicine: Pill, hospital: Map, cost: Calculator };
+const featureIconMap = { medicine: Pill, hospital: Map, cost: Hospital };
 const doctorTipAudioEntries = doctorTips.flatMap((tip, index) => {
   const tipNumber = String(index + 1).padStart(2, "0");
   return [
@@ -977,13 +977,13 @@ function HomeSection({ onNavigate }) {
         </p>
       </div>
 
-      <div className="grid flex-1 gap-4 md:grid-cols-3 lg:gap-6" aria-label="주요 기능">
+      <div className="grid gap-4 md:grid-cols-3 lg:flex-none lg:gap-6" aria-label="주요 기능">
         {featureCards.map((feature) => {
           const Icon = featureIconMap[feature.id];
           return (
             <button
               key={feature.id}
-              className="flex min-h-[230px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-5 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[290px] lg:h-full lg:min-h-0 lg:px-7 lg:py-7"
+              className="flex min-h-[230px] flex-col items-center justify-between rounded-[22px] border-2 px-5 py-5 text-center shadow-[0_12px_30px_rgba(58,77,116,0.08)] transition-transform active:scale-[0.98] sm:min-h-[290px] lg:min-h-[clamp(540px,56vh,600px)] lg:px-7 lg:py-7"
               style={{
                 backgroundColor: feature.cardColor,
                 borderColor: `${feature.titleColor}33`,
