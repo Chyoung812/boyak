@@ -26,7 +26,11 @@
    pip install -r requirements.txt
    ```
 3. `backend` 폴더 안에 있는 `.env.example` 파일을 복사하여 `.env` 라는 이름으로 새 파일을 만듭니다.
-4. 새로 만든 `.env` 파일 안에 공유받은 **OpenAI 키**와 **TMap 키**를 채워 넣습니다.
+4. 새로 만든 `.env` 파일 안에 공유받은 **OpenAI 키**, **Groq 키**, **TMap 키**를 채워 넣습니다.
+   ```env
+   GROQ_API_KEY=여기에_Groq_키를_넣으세요
+   GROQ_STT_MODEL=whisper-large-v3-turbo
+   ```
 
 ## 3. 로컬 약품 DB 구축 (매우 중요 ⭐️)
 

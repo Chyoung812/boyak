@@ -22,10 +22,21 @@ import CostEstimateScreen from "./components/CostEstimateScreen";
 import BackButton from "./components/BackButton";
 
 const featureIconMap = { medicine: Pill, hospital: Map, cost: Calculator };
-const fontScaleMap = { normal: "1", large: "1.08", xlarge: "1.16" };
+const fontScaleMap = { normal: "1", large: "1.14", xlarge: "1.28" };
 const DEFAULT_COST_TREATMENT = "진찰, 엑스레이, 처방전을 받는 경우";
 const fallbackLocation = { lat: 37.566481, lon: 126.985023 };
 const geolocationOptions = { timeout: 12000, enableHighAccuracy: false, maximumAge: 60000 };
+const FEMALE_KOREAN_VOICE_HINTS = ["yuna", "sora", "female", "woman", "여성", "여자"];
+const GTTS_COST_GUIDES = {
+  estimate: {
+    friendly: "병원 첫 방문 비용 안내드릴게요. 진찰만 받으면 보통 천 원에서 이천 원 정도예요. 엑스레이와 처방전까지 함께 받으면 팔천 원에서 만 원 정도 나올 수 있어요. 물리치료까지 진행하면 만 원에서 만오천 원 정도예요. 검사나 치료 내용에 따라 비용은 달라질 수 있어요.",
+    simple: "병원 첫 방문 기준 비용 안내입니다. 진찰만 하면 천 원에서 이천 원, 엑스레이와 처방전 포함 시 팔천 원에서 만 원, 물리치료까지 하면 만 원에서 만오천 원 정도입니다.",
+  },
+  chat: {
+    friendly: "재방문 여부나 진료 시간에 따라 병원비가 달라질 수 있어요. 같은 증상으로 다시 방문하면 초진보다 비용이 낮아지는 경우가 많아요. 또 저녁이나 공휴일 진료는 추가 비용이 붙을 수 있어요. 65세 이상은 나이 기준에 따라 본인부담 금액이 달라질 수도 있어요. 더 궁금할 땐 창구에 편하게 물어보세요.",
+    simple: "재방문, 진료 시간, 나이에 따라 병원비는 달라질 수 있습니다. 재진은 초진보다 저렴할 수 있고 야간·공휴일 진료는 추가 비용이 붙을 수 있습니다. 또 65세 이상은 본인부담 기준이 다르게 적용될 수 있습니다.",
+  },
+};
 const doctorTipAudioEntries = doctorTips.flatMap((tip, index) => {
   const tipNumber = String(index + 1).padStart(2, "0");
   return [
@@ -68,11 +79,12 @@ const STATIC_AUDIO = {
   // hospital - arrived
   "목적지에 도착했어요. 수고하셨습니다. 길안내는 끝났고, 필요하면 처음으로 돌아가 다시 병원을 찾아볼 수 있어요.": "/audio/hospital_arrived_friendly.wav",
   "목적지에 도착했어요. 길안내가 끝났습니다.": "/audio/hospital_arrived_simple.wav",
-  // cost - body
-  "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.": "/audio/cost_body_friendly.wav",
-  "병원비를 예상할 부위를 선택해주세요.": "/audio/cost_body_simple.wav",
-  // cost - common questions: friendly text changes often, so use dynamic /api/tts instead of stale static audio.
-  "많이 물어보는 병원비를 확인하세요.": "/audio/cost_chat_simple.wav",
+  // cost - first visit
+  [`${DEFAULT_COST_TREATMENT}의 예상 병원비는 ${treatmentCosts[DEFAULT_COST_TREATMENT]} 정도예요. ${treatmentCostDetails[DEFAULT_COST_TREATMENT]?.note ?? "실제 비용은 병원과 건강보험 적용 여부에 따라 달라질 수 있어요."}`]: "/audio/cost_friendly.wav",
+  [`예상 병원비는 ${treatmentCosts[DEFAULT_COST_TREATMENT]} 정도예요.`]: "/audio/cost_simple.wav",
+  // cost - frequently asked questions
+  "첫 방문 비용표에 없는 급여 기준만 따로 정리했어요. 재방문, 시간대, 나이에 따라 병원비가 달라질 수 있어요.": "/audio/qa_friendly.wav",
+  "많이 물어보는 병원비를 확인하세요.": "/audio/qa_simple.wav",
   // settings
   "설정 화면입니다. 글자 크기는 보통, 크게, 아주 크게 중에서 고를 수 있고, 음성 안내 방식은 친절하게 또는 간단하게로 바꿀 수 있어요.": "/audio/settings_friendly.wav",
   "글자 크기와 음성 안내 방식을 바꿀 수 있어요.": "/audio/settings_simple.wav",
@@ -156,11 +168,16 @@ export default function Home() {
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
   const audioRef = useRef(null);
+  const speechUtteranceRef = useRef(null);
   const speakControllerRef = useRef(null);
 
   const stopSpeaking = useCallback(() => {
     speakControllerRef.current?.abort();
     speakControllerRef.current = null;
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    speechUtteranceRef.current = null;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -168,11 +185,46 @@ export default function Home() {
     setIsSpeaking(false);
   }, []);
 
+  const speakWithBrowserVoice = useCallback((message, onDone) => {
+    if (typeof window === "undefined" || !window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+      return false;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(message);
+    const voices = window.speechSynthesis.getVoices();
+    const koreanVoices = voices.filter((voice) => voice.lang?.toLowerCase().startsWith("ko"));
+    const femaleKoreanVoice = koreanVoices.find((voice) => {
+      const voiceName = voice.name.toLowerCase();
+      return FEMALE_KOREAN_VOICE_HINTS.some((hint) => voiceName.includes(hint));
+    });
+
+    utterance.voice = femaleKoreanVoice ?? koreanVoices[0] ?? null;
+    utterance.lang = "ko-KR";
+    utterance.rate = ttsSpeed === "slow" ? 0.72 : 0.95;
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      speechUtteranceRef.current = null;
+      onDone?.();
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      speechUtteranceRef.current = null;
+    };
+    speechUtteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+    return true;
+  }, [ttsSpeed]);
+
   const speak = useCallback(async (message, options = {}) => {
     if (!message?.trim()) return false;
     const { onDone } = options;
     speakControllerRef.current?.abort();
     speakControllerRef.current = null;
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    speechUtteranceRef.current = null;
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current = null;
@@ -194,6 +246,10 @@ export default function Home() {
         audioRef.current = null;
         return false;
       }
+    }
+
+    if (voiceType === "gtts" && speakWithBrowserVoice(message, onDone)) {
+      return true;
     }
 
     const controller = new AbortController();
@@ -224,10 +280,13 @@ export default function Home() {
       await audio.play();
       return true;
     } catch (e) {
+      if (e?.name !== "AbortError" && voiceType === "gtts") {
+        return speakWithBrowserVoice(message, onDone);
+      }
       if (e?.name !== "AbortError") setIsSpeaking(false);
       return false;
     }
-  }, [ttsSpeed, voiceType]);
+  }, [speakWithBrowserVoice, ttsSpeed, voiceType]);
 
   const handleImage = useCallback((event) => {
     const files = Array.from(event.target.files ?? []);
@@ -291,7 +350,7 @@ export default function Home() {
     if (!voiceEnabled) return;
     speak(getGlobalVoiceGuide());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, medicineStep, hospitalStep, costStep, voiceEnabled]);
+  }, [view, medicineStep, hospitalStep, costStep, voiceEnabled, voiceGuideStyle, voiceType, ttsSpeed]);
 
   const getGlobalVoiceGuide = useCallback(() => {
     const isSimpleVoice = voiceGuideStyle === "simple";
@@ -369,11 +428,17 @@ export default function Home() {
     }
     if (view === "cost") {
       if (costStep === "estimate") {
+        if (voiceType === "gtts") {
+          return isSimpleVoice ? GTTS_COST_GUIDES.estimate.simple : GTTS_COST_GUIDES.estimate.friendly;
+        }
         return isSimpleVoice
           ? `예상 병원비는 ${treatmentCosts[DEFAULT_COST_TREATMENT]} 정도예요.`
           : `${DEFAULT_COST_TREATMENT}의 예상 병원비는 ${treatmentCosts[DEFAULT_COST_TREATMENT]} 정도예요. ${treatmentCostDetails[DEFAULT_COST_TREATMENT]?.note ?? "실제 비용은 병원과 건강보험 적용 여부에 따라 달라질 수 있어요."}`;
       }
       if (costStep === "chat") {
+        if (voiceType === "gtts") {
+          return isSimpleVoice ? GTTS_COST_GUIDES.chat.simple : GTTS_COST_GUIDES.chat.friendly;
+        }
         return isSimpleVoice
           ? "많이 물어보는 병원비를 확인하세요."
           : "첫 방문 비용표에 없는 급여 기준만 따로 정리했어요. 재방문, 시간대, 나이에 따라 병원비가 달라질 수 있어요.";
@@ -388,7 +453,7 @@ export default function Home() {
     return isSimpleVoice
       ? "필요한 기능을 선택해주세요."
       : "약 복용 안전 확인, 병원 길찾기, 병원비 예상 중 필요한 기능을 선택해주세요.";
-  }, [view, medicineStep, costStep, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, hospitalLoadingMessage, isHospitalLoading, selectedSymptom, medicineSafetyResult, voiceGuideStyle]);
+  }, [view, medicineStep, costStep, hospitalStep, hospitals, hospitalIndex, hospitalDepartment, hospitalLoadingMessage, isHospitalLoading, selectedSymptom, medicineSafetyResult, voiceGuideStyle, voiceType]);
 
   const handleMedicineBack = useCallback(() => {
     stopSpeaking();
@@ -1217,7 +1282,7 @@ const ttsSpeedOptions = [
 
 const voiceTypeOptions = [
   { id: "carat", label: "캐럿 음성", description: "미리 녹음된 자연스러운 목소리로 안내해요." },
-  { id: "gtts", label: "기본 음성", description: "구글 TTS로 모든 화면을 실시간 합성해요." },
+  { id: "gtts", label: "기본 음성", description: "기기의 한국어 여성 음성을 우선 사용해 안내해요." },
 ];
 
 function SettingsScreen({

@@ -158,11 +158,15 @@ function HospitalFlowScreen({
 function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening" | "confirm"
   const [transcript, setTranscript] = useState("");
+  const [liveTranscript, setLiveTranscript] = useState("");
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioContextRef = useRef(null);
   const silenceTimerRef = useRef(null);
+  const noSpeechTimerRef = useRef(null);
+  const maxRecordingTimerRef = useRef(null);
   const speechDetectedRef = useRef(false);
+  const speechRecognitionRef = useRef(null);
 
   const keyword = extractKeyword(transcript);
   const confirmMsg = keyword
@@ -171,7 +175,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 
   const toggleVoice = useCallback(async () => {
     if (voicePhase === "listening") {
-      if (mediaRecorderRef.current) mediaRecorderRef.current.stop();
       return;
     }
 
@@ -181,6 +184,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      setLiveTranscript("");
 
       // 무음 감지: 말이 끝나면 자동 정지
       const audioCtx = new AudioContext();
@@ -192,7 +196,9 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       speechDetectedRef.current = false;
 
       const SPEECH_THRESHOLD = 15;
-      const SILENCE_MS = 1500;
+      const SILENCE_MS = 1200;
+      const NO_SPEECH_MS = 4500;
+      const MAX_RECORDING_MS = 10000;
 
       const checkSilence = () => {
         if (mediaRecorderRef.current?.state !== "recording") return;
@@ -200,6 +206,8 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
         const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
         if (avg > SPEECH_THRESHOLD) {
           speechDetectedRef.current = true;
+          clearTimeout(noSpeechTimerRef.current);
+          noSpeechTimerRef.current = null;
           clearTimeout(silenceTimerRef.current);
           silenceTimerRef.current = null;
         } else if (speechDetectedRef.current && !silenceTimerRef.current) {
@@ -212,6 +220,37 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
         requestAnimationFrame(checkSilence);
       };
       requestAnimationFrame(checkSilence);
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.lang = "ko-KR";
+        recognition.interimResults = true;
+        recognition.continuous = true;
+        recognition.onresult = (event) => {
+          const spokenText = Array.from(event.results)
+            .map((result) => result[0]?.transcript ?? "")
+            .join("")
+            .trim();
+          setLiveTranscript(spokenText);
+        };
+        recognition.onerror = () => {};
+        speechRecognitionRef.current = recognition;
+        try {
+          recognition.start();
+        } catch {
+          speechRecognitionRef.current = null;
+        }
+      }
+      noSpeechTimerRef.current = setTimeout(() => {
+        if (!speechDetectedRef.current && mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, NO_SPEECH_MS);
+      maxRecordingTimerRef.current = setTimeout(() => {
+        if (mediaRecorderRef.current?.state === "recording") {
+          mediaRecorderRef.current.stop();
+        }
+      }, MAX_RECORDING_MS);
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) audioChunksRef.current.push(event.data);
@@ -220,6 +259,12 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       mediaRecorder.onstop = async () => {
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
+        clearTimeout(noSpeechTimerRef.current);
+        noSpeechTimerRef.current = null;
+        clearTimeout(maxRecordingTimerRef.current);
+        maxRecordingTimerRef.current = null;
+        speechRecognitionRef.current?.stop();
+        speechRecognitionRef.current = null;
         audioContextRef.current?.close();
         audioContextRef.current = null;
         stream.getTracks().forEach((track) => track.stop());
@@ -238,8 +283,10 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
           });
           const data = await res.json();
           if (data.ok && data.text) {
-            setTranscript(data.text);
-            onSelect(data.text);
+            const spokenText = data.text.trim();
+            setTranscript(spokenText);
+            setLiveTranscript("");
+            setTimeout(() => onSelect(spokenText), 650);
           } else {
             onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
           }
@@ -251,6 +298,7 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       mediaRecorder.start();
       setVoicePhase("listening");
       setTranscript("");
+      setLiveTranscript("");
     } catch (e) {
       onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
     }
@@ -295,46 +343,47 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 
   // ── 기본 입력 화면 ──
   return (
-    <div className="mx-auto flex w-full flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-7 lg:py-5">
-      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-2">
-        <h2 className="boyak-h3 font-black text-boyak-ink">
+    <div className="mx-auto flex w-full flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:min-h-[430px] lg:px-8 lg:py-7 xl:min-h-[470px] xl:px-10 xl:py-8">
+      <div className="mb-8 flex items-start justify-between gap-4 lg:mb-5">
+        <h2 className="text-3xl font-black leading-tight text-boyak-ink sm:text-4xl lg:text-3xl xl:text-4xl">
           어디가 불편하신가요?
         </h2>
       </div>
 
       {/* 큰 말하기 버튼 */}
       <button
-        className={`mb-6 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] lg:mb-3 lg:min-h-[92px] lg:gap-2 lg:text-2xl ${
+        className={`mb-7 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] sm:text-4xl lg:mb-5 lg:min-h-[128px] lg:gap-3 lg:text-3xl xl:min-h-[146px] xl:text-4xl ${
           voicePhase === "listening"
             ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
             : "border-[#30343B] bg-white"
         }`}
         type="button"
         onClick={toggleVoice}
+        disabled={voicePhase === "listening"}
       >
         <Mic
-          className={`size-14 lg:size-7 ${voicePhase === "listening" ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
+          className={`size-14 lg:size-10 ${voicePhase === "listening" ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
           strokeWidth={2.4}
           aria-hidden="true"
         />
-        {voicePhase === "listening" ? "듣는 중... (완료 시 한 번 더 누르세요)" : "말하기"}
+        {voicePhase === "listening" ? (liveTranscript || "듣는 중...") : "말하기"}
       </button>
 
       {/* 구분선 */}
-      <div className="mb-5 flex items-center gap-3 lg:mb-2">
+      <div className="mb-5 flex items-center gap-3 lg:mb-4">
         <div className="h-px flex-1 bg-boyak-line" />
-        <span className="text-base font-bold text-boyak-muted">또는 바로 선택</span>
+        <span className="text-lg font-bold text-boyak-muted lg:text-xl">또는 바로 선택</span>
         <div className="h-px flex-1 bg-boyak-line" />
       </div>
 
       {/* 빠른 선택 버튼 */}
-      <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-2" aria-label="증상 빠른 선택">
+      <div className="grid grid-cols-2 gap-4 sm:gap-5 lg:gap-3 xl:gap-4" aria-label="증상 빠른 선택">
         {symptomOptions.map((symptom) => {
           const isSelected = selectedSymptom === symptom;
           return (
             <button
               key={symptom}
-              className={`min-h-24 rounded-2xl border-2 px-4 text-2xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-28 sm:text-3xl lg:min-h-[72px] lg:text-2xl ${
+              className={`min-h-24 rounded-2xl border-2 px-4 text-2xl font-black shadow-sm transition active:scale-[0.98] sm:min-h-28 sm:text-3xl lg:min-h-[92px] lg:text-3xl xl:min-h-[104px] xl:text-4xl ${
                 isSelected
                   ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
                   : "border-[#30343B] bg-white text-boyak-ink"

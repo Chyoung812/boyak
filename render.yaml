@@ -16,6 +16,10 @@ services:
         sync: false
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_STT_MODEL
+        value: whisper-large-v3-turbo
       - key: CORS_ORIGINS
         sync: false        # 프론트엔드 배포 후 URL 입력 (예: https://boyak-frontend.onrender.com)
 
