@@ -97,7 +97,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
 
       // 출발 마커
       const userIcon = L.divIcon({
-        html: `<div style="width:36px;height:36px;background:#004D40;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#A5D6A7;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.4)">▲</div>`,
+        html: `<div style="width:36px;height:36px;background:#3F73F0;border:3px solid white;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#DCE8FF;font-size:18px;box-shadow:0 2px 6px rgba(0,0,0,0.28)">▲</div>`,
         iconSize: [36, 36], iconAnchor: [18, 18], className: "",
       });
       userMarkerRef.current = L.marker([lat, lon], { icon: userIcon })
@@ -160,7 +160,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
           setRouteInfo({ totalDistance, totalTime, stairs });
 
           if (latlngs.length > 0) {
-            const poly = L.polyline(latlngs, { color: "#0088FF", weight: 6, opacity: 0.85 }).addTo(map);
+            const poly = L.polyline(latlngs, { color: "#4F7CFF", weight: 6, opacity: 0.78 }).addTo(map);
             map.fitBounds(poly.getBounds(), { padding: [40, 40] });
           }
         })
@@ -303,8 +303,8 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
   return (
     <div className={wrapperClass}>
       {/* 안내 바 */}
-      <div className="flex items-center gap-4 bg-[#004D40] px-6 py-5 text-white lg:px-7 lg:py-4">
-        <div className="grid size-16 shrink-0 place-items-center rounded-full bg-[#00796B] text-3xl lg:size-16 lg:text-3xl">
+      <div className="flex items-center gap-4 bg-[#3F73F0] px-6 py-5 text-white lg:px-7 lg:py-4">
+        <div className="grid size-16 shrink-0 place-items-center rounded-full bg-[#5F8BFF] text-3xl lg:size-16 lg:text-3xl">
           ⬆️
         </div>
         <div className="min-w-0">
@@ -312,7 +312,7 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
             {isLocating ? "위치 확인 중..." : instruction}
           </p>
           {routeInfo && (
-            <p className="mt-1 text-base font-bold text-[#80CBC4] lg:text-lg">
+            <p className="mt-1 text-base font-bold text-[#DCE8FF] lg:text-lg">
               {routeInfo.totalDistance}m · 약 {routeInfo.totalTime}분
               {routeInfo.stairs === 0 ? " · 계단 없음" : ` · 계단 ${routeInfo.stairs}개`}
             </p>
