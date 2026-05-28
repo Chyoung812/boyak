@@ -755,7 +755,9 @@ export default function Home() {
         className={
           view === "home"
             ? "bg-[#F7F8FA] px-5 pb-4 pt-5 sm:px-10 sm:py-6 lg:px-24 lg:py-6"
-            : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
+            : view === "cost"
+              ? "px-4 pb-16 pt-8 sm:px-6 lg:overflow-y-auto lg:px-8 lg:py-3 xl:px-10"
+              : "px-5 pb-16 pt-8 sm:px-10 lg:overflow-y-auto lg:px-16 lg:py-3 xl:px-20"
         }
       >
         {view === "home" && <HomeSection onNavigate={setView} />}

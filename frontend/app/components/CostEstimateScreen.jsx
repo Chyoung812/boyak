@@ -70,10 +70,10 @@ function CostEstimateScreen({
         ))}
       </div>
 
-      <div className="lg:flex lg:min-h-0 lg:flex-1 lg:items-start lg:justify-center">
+      <div className="w-full lg:min-h-0 lg:flex-1">
         {step === "estimate" && (
           <section
-            className="mx-auto w-full max-w-[1360px] overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6 xl:p-8"
+            className="w-full overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6 xl:p-8"
             aria-labelledby="cost-step-1"
           >
             <StepLabel number="1" title="첫 방문 비용" />
@@ -130,7 +130,7 @@ function CostEstimateScreen({
 
         {step === "chat" && (
           <section
-            className="mx-auto w-full max-w-[1360px] overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6 xl:p-8"
+            className="w-full overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6 xl:p-8"
             aria-labelledby="cost-step-2"
           >
             <StepLabel number="2" title="많이 물어보는 비용" />
@@ -188,12 +188,12 @@ function IntroCard({
   body = "흔한 기본 흐름을 하나로 정리했어요. 병원 창구 결제 기준이며 약국 약값은 제외했어요.",
 }) {
   return (
-    <div className="mb-6 rounded-[28px] bg-white px-6 py-7 text-center shadow-[inset_0_0_0_1px_rgba(222,219,214,0.85)]">
+    <div className="mb-6 rounded-[28px] bg-white px-6 py-7 text-center shadow-[inset_0_0_0_1px_rgba(222,219,214,0.85)] xl:px-10">
       <p className="mb-3 text-sm font-black tracking-[0.18em] text-boyak-orange">{eyebrow}</p>
-      <h2 id={titleId} className="mx-auto max-w-3xl text-4xl font-black leading-tight tracking-[-0.045em] text-[#111111] lg:text-4xl">
+      <h2 id={titleId} className="mx-auto max-w-5xl text-4xl font-black leading-tight tracking-[-0.045em] text-[#111111] lg:text-4xl">
         {title}
       </h2>
-      <p className="mx-auto mt-4 max-w-3xl text-lg font-extrabold leading-relaxed text-[#626260] lg:text-base">
+      <p className="mx-auto mt-4 max-w-5xl text-lg font-extrabold leading-relaxed text-[#626260] lg:text-base">
         {body}
       </p>
     </div>
