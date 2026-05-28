@@ -68,7 +68,7 @@ const STATIC_AUDIO = {
   "병원비를 예상해볼 부위를 먼저 선택해주세요. 허리, 무릎, 어깨 같은 버튼을 누르거나 말하기 버튼으로 말씀하실 수 있어요.": "/audio/cost_body_friendly.wav",
   "병원비를 예상할 부위를 선택해주세요.": "/audio/cost_body_simple.wav",
   // cost - common questions
-  "많이 물어보는 병원비를 미리 정리한 화면이에요. 도수치료, MRI, 물리치료 같은 항목별 예상 비용과 병원에 물어볼 말을 확인하세요.": "/audio/cost_chat_friendly.wav",
+  "많이 물어보는 병원비를 미리 정리한 화면이에요. 도수치료, 초음파, 물리치료 같은 항목별 예상 비용과 병원에 물어볼 말을 확인하세요.": "/audio/cost_chat_friendly.wav",
   "많이 물어보는 병원비를 확인하세요.": "/audio/cost_chat_simple.wav",
   // settings
   "설정 화면입니다. 글자 크기는 보통, 크게, 아주 크게 중에서 고를 수 있고, 음성 안내 방식은 친절하게 또는 간단하게로 바꿀 수 있어요.": "/audio/settings_friendly.wav",
@@ -328,7 +328,7 @@ export default function Home() {
       if (costStep === "chat") {
         return isSimpleVoice
           ? "많이 물어보는 병원비를 확인하세요."
-          : "많이 물어보는 병원비를 미리 정리한 화면이에요. 도수치료, MRI, 물리치료 같은 항목별 예상 비용과 병원에 물어볼 말을 확인하세요.";
+          : "많이 물어보는 병원비를 미리 정리한 화면이에요. 도수치료, 초음파, 물리치료 같은 항목별 예상 비용과 병원에 물어볼 말을 확인하세요.";
       }
       return isSimpleVoice ? "병원비 예상 화면입니다." : "진료 흐름별 예상 병원비와 확인 질문을 안내합니다.";
     }
@@ -688,7 +688,7 @@ export default function Home() {
   );
 
   const handleCostAsk = useCallback(() => {
-    speak("궁금한 병원비를 말씀해주세요. 예를 들어, MRI도 건강보험이 되나요 라고 말할 수 있어요.");
+    speak("궁금한 병원비를 말씀해주세요. 예를 들어, 도수치료는 얼마인가요 라고 말할 수 있어요.");
   }, [speak]);
 
   const displayHospitals = isHospitalLoading ? [] : (hospitals.length > 0 ? hospitals : nearbyHospitals);
