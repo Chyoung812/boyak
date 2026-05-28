@@ -114,7 +114,7 @@ function CostEstimateScreen({
 
               <div className="mt-5 grid gap-3 rounded-[22px] bg-[#f1f4fa] p-4 md:grid-cols-[1fr_auto] md:items-center">
                 <p className="text-base font-bold leading-relaxed text-[#626260]">
-                  주사, 초음파, 도수치료, 체외충격파처럼 추가로 권유받는 치료는 금액 차이가 커서 따로 확인하는 게 안전해요.
+                  주사, 초음파 검사처럼 추가로 권유받는 항목은 급여/비급여와 금액 차이가 커서 따로 확인하는 게 안전해요.
                 </p>
                 <button
                   className="min-h-14 rounded-[18px] bg-[#111111] px-6 text-lg font-black text-white shadow-[0_12px_24px_rgba(17,17,17,0.14)] transition hover:bg-boyak-orange"
