@@ -73,14 +73,14 @@ function CostEstimateScreen({
       <div className="lg:flex lg:min-h-0 lg:flex-1 lg:items-start lg:justify-center">
         {step === "estimate" && (
           <section
-            className="mx-auto w-full max-w-[1120px] overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6"
+            className="mx-auto w-full max-w-[1360px] overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6 xl:p-8"
             aria-labelledby="cost-step-1"
           >
             <StepLabel number="1" title="첫 방문 비용" />
             <IntroCard titleId="cost-step-1" />
 
-            <section className="rounded-[28px] border border-[#dedbd6] bg-white p-5 lg:p-6" aria-labelledby="first-visit-cases">
-              <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+            <section className="rounded-[28px] border border-[#dedbd6] bg-white p-5 lg:p-6 xl:p-8" aria-labelledby="first-visit-cases">
+              <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="mb-2 text-sm font-black tracking-[0.16em] text-boyak-orange">대표 3가지 경우</p>
                   <h3 id="first-visit-cases" className="text-3xl font-black tracking-[-0.04em] text-[#111111] lg:text-2xl">
@@ -90,18 +90,18 @@ function CostEstimateScreen({
                 <span className="rounded-full bg-[#ecfdf3] px-4 py-2 text-sm font-black text-[#16804D]">병원 창구 결제 기준</span>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-3">
+              <div className="grid gap-5 lg:grid-cols-3 xl:gap-6">
                 {firstVisitItems.map((item, index) => {
                   const detail = treatmentCostDetails[item];
                   return (
-                    <article key={item} className="flex min-h-[230px] flex-col rounded-[24px] border border-[#dedbd6] bg-[#fbfaf8] p-5 shadow-[0_8px_22px_rgba(17,17,17,0.04)]">
+                    <article key={item} className="flex min-h-[230px] flex-col rounded-[24px] border border-[#dedbd6] bg-[#fbfaf8] p-5 shadow-[0_8px_22px_rgba(17,17,17,0.04)] xl:p-6">
                       <div className="mb-4 flex items-center gap-3">
                         <span className="grid size-10 shrink-0 place-items-center rounded-full bg-boyak-orange text-lg font-black text-white">
                           {index + 1}
                         </span>
                         <h4 className="text-xl font-black leading-tight tracking-[-0.03em] text-[#111111] lg:text-lg">{item}</h4>
                       </div>
-                      <p className="rounded-[18px] bg-[#FFF3E8] px-4 py-4 text-2xl font-black leading-tight text-boyak-orange lg:text-xl">
+                      <p className="rounded-[18px] bg-[#FFF3E8] px-4 py-4 text-2xl font-black leading-tight text-boyak-orange lg:text-xl xl:text-2xl">
                         {treatmentCosts[item]}
                       </p>
                       <p className="mt-4 text-base font-bold leading-relaxed text-[#626260] lg:text-sm">
@@ -112,7 +112,7 @@ function CostEstimateScreen({
                 })}
               </div>
 
-              <div className="mt-5 grid gap-3 rounded-[22px] bg-[#f1f4fa] p-4 md:grid-cols-[1fr_auto] md:items-center">
+              <div className="mt-6 grid gap-4 rounded-[22px] bg-[#f1f4fa] p-5 md:grid-cols-[1fr_auto] md:items-center xl:p-6">
                 <p className="text-base font-bold leading-relaxed text-[#626260]">
                   추가 검사·치료를 권유받으면 먼저 급여 적용 여부와 병원 창구 예상 금액을 확인하세요.
                 </p>
@@ -130,15 +130,15 @@ function CostEstimateScreen({
 
         {step === "chat" && (
           <section
-            className="mx-auto w-full max-w-[1120px] overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6"
+            className="mx-auto w-full max-w-[1360px] overflow-hidden rounded-[32px] border border-[#dedbd6] bg-[#faf9f6] p-5 shadow-[0_24px_70px_rgba(17,17,17,0.10)] lg:p-6 xl:p-8"
             aria-labelledby="cost-step-2"
           >
             <StepLabel number="2" title="많이 물어보는 비용" />
             <IntroCard titleId="cost-step-2" eyebrow="COVERED COST QUESTIONS" title="금액이 달라지는 기준만 확인하세요" body="첫 방문 비용표에 없는 급여 기준만 따로 정리했어요. 재방문, 시간대, 나이에 따라 창구 부담이 달라질 수 있어요." />
 
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-5 md:grid-cols-3 xl:gap-6">
               {commonCostQuestions.map((item) => (
-                <article key={item.title} className="flex min-h-[280px] flex-col rounded-[24px] border border-[#dedbd6] bg-white p-5 shadow-[0_10px_28px_rgba(17,17,17,0.05)]">
+                <article key={item.title} className="flex min-h-[280px] flex-col rounded-[24px] border border-[#dedbd6] bg-white p-5 shadow-[0_10px_28px_rgba(17,17,17,0.05)] xl:p-6">
                   <div className="mb-4 flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="mb-1 text-sm font-black tracking-[0.12em] text-boyak-orange">{item.type}</p>
@@ -159,7 +159,7 @@ function CostEstimateScreen({
               ))}
             </div>
 
-            <div className="mt-5 grid gap-3 rounded-[24px] border border-[#bfe8d0] bg-[#fbfffd] p-5 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="mt-6 grid gap-4 rounded-[24px] border border-[#bfe8d0] bg-[#fbfffd] p-5 md:grid-cols-[1fr_auto] md:items-center xl:p-6">
               <div>
                 <h3 className="text-xl font-black text-[#111111]">병원 창구에서 이렇게 확인하세요</h3>
                 <p className="mt-2 text-base font-bold leading-relaxed text-[#626260]">
