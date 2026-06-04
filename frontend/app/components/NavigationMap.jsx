@@ -3,19 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigation, RotateCcw, Square } from "lucide-react";
 
-const TMAP_KEY = process.env.NEXT_PUBLIC_TMAP_KEY;
-const fallbackLocation = { lat: 37.566481, lon: 126.985023 };
-const geolocationOptions = { timeout: 12000, enableHighAccuracy: false, maximumAge: 60000 };
+import { fallbackLocation, geolocationOptions, getGeolocationPermissionState } from "../lib/geolocation";
 
-async function getGeolocationPermissionState() {
-  if (!navigator.permissions?.query) return "unknown";
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    return status.state;
-  } catch {
-    return "unknown";
-  }
-}
+const TMAP_KEY = process.env.NEXT_PUBLIC_TMAP_KEY;
 
 function getLocationFailureLabel(error, permissionState) {
   if (permissionState === "denied" || error?.code === 1) {

@@ -16,15 +16,6 @@ import StepHeader from "./StepHeader";
 import FlowPanel from "./FlowPanel";
 import NavigationMap from "./NavigationMap";
 
-// 음성에서 증상 키워드 추출 (확인 메시지 표시용)
-const SYMPTOM_KEYWORDS = [
-  "허리", "요통", "무릎", "어깨", "두통", "머리", "배", "소화", "기침", "가슴",
-  "눈", "귀", "코", "목", "피부", "치아", "관절", "디스크", "척추", "발목",
-];
-function extractKeyword(text) {
-  return SYMPTOM_KEYWORDS.find((kw) => text.includes(kw)) ?? null;
-}
-
 function HospitalFlowScreen({
   step,
   selectedSymptom,
@@ -156,8 +147,7 @@ function HospitalFlowScreen({
 
 // ─── 증상 입력 패널 ────────────────────────────────────────────────────────────
 function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
-  const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening" | "confirm"
-  const [transcript, setTranscript] = useState("");
+  const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening"
   const [liveTranscript, setLiveTranscript] = useState("");
   const liveTranscriptRef = useRef("");
   const mediaRecorderRef = useRef(null);
@@ -168,11 +158,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
   const maxRecordingTimerRef = useRef(null);
   const speechDetectedRef = useRef(false);
   const speechRecognitionRef = useRef(null);
-
-  const keyword = extractKeyword(transcript);
-  const confirmMsg = keyword
-    ? `${keyword} 통증에 맞는 병원을 찾아드릴까요?`
-    : `"${transcript}" 증상으로 병원을 찾아드릴까요?`;
 
   const toggleVoice = useCallback(async () => {
     if (voicePhase === "listening") {
@@ -287,14 +272,12 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
           const data = await res.json();
           if (data.ok && data.text) {
             const spokenText = data.text.trim();
-            setTranscript(spokenText);
             setLiveTranscript("");
             liveTranscriptRef.current = "";
             setTimeout(() => onSelect(spokenText), 650);
           } else {
             const browserText = liveTranscriptRef.current.trim();
             if (browserText) {
-              setTranscript(browserText);
               setLiveTranscript("");
               liveTranscriptRef.current = "";
               setTimeout(() => onSelect(browserText), 650);
@@ -305,7 +288,6 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
         } catch (e) {
           const browserText = liveTranscriptRef.current.trim();
           if (browserText) {
-            setTranscript(browserText);
             setLiveTranscript("");
             liveTranscriptRef.current = "";
             setTimeout(() => onSelect(browserText), 650);
@@ -317,49 +299,11 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
 
       mediaRecorder.start();
       setVoicePhase("listening");
-      setTranscript("");
       setLiveTranscript("");
     } catch (e) {
       onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
     }
   }, [voicePhase, onSpeak, onSelect]);
-
-  const handleConfirm = () => onSelect(transcript);
-  const handleRetry = () => {
-    setVoicePhase("idle");
-    setTranscript("");
-  };
-
-  // ── 확인 화면 ──
-  if (voicePhase === "confirm") {
-    return (
-      <div className="mx-auto flex w-full flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-8 shadow-soft sm:px-9 sm:py-10 lg:px-8 lg:py-8">
-        <p className="mb-3 text-xl font-black text-boyak-muted lg:text-lg">제가 들은 내용</p>
-        <div className="mb-7 rounded-2xl bg-[#F0F7FF] px-6 py-5 text-3xl font-black text-boyak-blue lg:mb-5 lg:text-2xl">
-          &ldquo;{transcript}&rdquo;
-        </div>
-        <p className="mb-8 text-3xl font-black leading-relaxed sm:text-4xl lg:mb-5 lg:text-2xl">
-          {confirmMsg}
-        </p>
-        <div className="grid grid-cols-2 gap-4 lg:gap-3">
-          <button
-            className="min-h-[96px] rounded-2xl border-2 border-[#30343B] bg-white text-3xl font-black transition active:scale-[0.98] lg:min-h-24 lg:text-2xl"
-            type="button"
-            onClick={handleRetry}
-          >
-            아니오
-          </button>
-          <button
-            className="min-h-[96px] rounded-2xl bg-boyak-blue text-3xl font-black text-white transition active:scale-[0.98] lg:min-h-24 lg:text-2xl"
-            type="button"
-            onClick={handleConfirm}
-          >
-            네, 찾아주세요
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // ── 기본 입력 화면 ──
   return (

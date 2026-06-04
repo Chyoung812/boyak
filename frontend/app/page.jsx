@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { API_BASE_URL, doctorTips, featureCards, hospitalStepKeys, nearbyHospitals, treatmentCostDetails, treatmentCosts } from "./constants";
+import { fallbackLocation, geolocationOptions, getGeolocationPermissionState } from "./lib/geolocation";
 import MedicineFlowScreen from "./components/MedicineFlowScreen";
 import HospitalFlowScreen from "./components/HospitalFlowScreen";
 import CostEstimateScreen from "./components/CostEstimateScreen";
@@ -24,8 +25,6 @@ import BackButton from "./components/BackButton";
 const featureIconMap = { medicine: Pill, hospital: Map, cost: Calculator };
 const fontScaleMap = { normal: "1", large: "1.14", xlarge: "1.28" };
 const DEFAULT_COST_TREATMENT = "진찰, 엑스레이, 처방전을 받는 경우";
-const fallbackLocation = { lat: 37.566481, lon: 126.985023 };
-const geolocationOptions = { timeout: 12000, enableHighAccuracy: false, maximumAge: 60000 };
 const FEMALE_KOREAN_VOICE_HINTS = ["yuna", "sora", "female", "woman", "여성", "여자"];
 const GTTS_COST_GUIDES = {
   estimate: {
@@ -94,16 +93,6 @@ const STATIC_AUDIO = {
   "서버 오류가 발생했어요. 다시 시도해 주세요.": "/audio/stt_error.wav",
   "마이크 접근 권한이 없거나 지원하지 않는 기기입니다.": "/audio/mic_denied.wav",
 };
-
-async function getGeolocationPermissionState() {
-  if (!navigator.permissions?.query) return "unknown";
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    return status.state;
-  } catch {
-    return "unknown";
-  }
-}
 
 function getGeolocationFailureCopy(error, permissionState) {
   if (permissionState === "denied" || error?.code === 1) {
@@ -384,7 +373,7 @@ export default function Home() {
           : "선택한 약들을 기준으로 함께 먹으면 안 되는 조합이나 나이에 주의가 필요한 약을 확인하는 중이에요.";
       }
       if (medicineStep === "result") {
-        const resultMessage = medicineSafetyResult?.tts_text || medicineSafetyResult?.message;
+        const resultMessage = medicineSafetyResult?.message;
         return isSimpleVoice
           ? resultMessage || "DUR 분석 결과를 확인해주세요."
           : resultMessage || "DUR 분석 결과를 확인해주세요. 주의 문구가 있으면 약사나 의사에게 확인하세요.";
