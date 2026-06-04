@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useCallback, useRef } from "react";
+import { memo, useState, useCallback } from "react";
 import {
   Building2,
   CheckCircle,
@@ -15,6 +15,7 @@ import BackButton from "./BackButton";
 import StepHeader from "./StepHeader";
 import FlowPanel from "./FlowPanel";
 import NavigationMap from "./NavigationMap";
+import { useVoiceRecorder } from "../hooks/useVoiceRecorder";
 
 function HospitalFlowScreen({
   step,
@@ -36,6 +37,7 @@ function HospitalFlowScreen({
   onRetryLocation,
   onSearchLocation,
   onSpeak,
+  onStopSpeak,
   onLocationChange,
   relocatedHospitals = [],
   isRelocatingHospital = false,
@@ -92,6 +94,7 @@ function HospitalFlowScreen({
           selectedSymptom={selectedSymptom}
           onSelect={onSelectSymptom}
           onSpeak={onSpeak}
+          onStopSpeak={onStopSpeak}
         />
       )}
 
@@ -110,6 +113,7 @@ function HospitalFlowScreen({
           onRetryLocation={onRetryLocation}
           onSearchLocation={onSearchLocation}
           onSpeak={onSpeak}
+          onStopSpeak={onStopSpeak}
         />
       )}
 
@@ -146,164 +150,57 @@ function HospitalFlowScreen({
 }
 
 // ─── 증상 입력 패널 ────────────────────────────────────────────────────────────
-function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
-  const [voicePhase, setVoicePhase] = useState("idle"); // "idle" | "listening"
-  const [liveTranscript, setLiveTranscript] = useState("");
-  const liveTranscriptRef = useRef("");
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const audioContextRef = useRef(null);
-  const silenceTimerRef = useRef(null);
-  const noSpeechTimerRef = useRef(null);
-  const maxRecordingTimerRef = useRef(null);
-  const speechDetectedRef = useRef(false);
-  const speechRecognitionRef = useRef(null);
+function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak, onStopSpeak }) {
+  const handleVoiceResult = useCallback(async (blob, interim, speechDetected) => {
+    const browserText = interim.trim();
 
-  const toggleVoice = useCallback(async () => {
-    if (voicePhase === "listening") {
+    // 발화가 전혀 감지되지 않았고 자막도 없으면, 다음 화면으로 넘기지 않고 다시 요청한다
+    if (!speechDetected && !browserText) {
+      onSpeak("음성이 들리지 않았어요. 다시 한번 말씀해 주세요.");
       return;
     }
 
-    // Start recording
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-      setLiveTranscript("");
-      liveTranscriptRef.current = "";
-
-      // 무음 감지: 말이 끝나면 자동 정지
-      const audioCtx = new AudioContext();
-      audioContextRef.current = audioCtx;
-      const analyser = audioCtx.createAnalyser();
-      audioCtx.createMediaStreamSource(stream).connect(analyser);
-      analyser.fftSize = 512;
-      const buf = new Uint8Array(analyser.frequencyBinCount);
-      speechDetectedRef.current = false;
-
-      const SPEECH_THRESHOLD = 15;
-      const SILENCE_MS = 1200;
-      const NO_SPEECH_MS = 4500;
-      const MAX_RECORDING_MS = 10000;
-
-      const checkSilence = () => {
-        if (mediaRecorderRef.current?.state !== "recording") return;
-        analyser.getByteFrequencyData(buf);
-        const avg = buf.reduce((a, b) => a + b, 0) / buf.length;
-        if (avg > SPEECH_THRESHOLD) {
-          speechDetectedRef.current = true;
-          clearTimeout(noSpeechTimerRef.current);
-          noSpeechTimerRef.current = null;
-          clearTimeout(silenceTimerRef.current);
-          silenceTimerRef.current = null;
-        } else if (speechDetectedRef.current && !silenceTimerRef.current) {
-          silenceTimerRef.current = setTimeout(() => {
-            if (mediaRecorderRef.current?.state === "recording") {
-              mediaRecorderRef.current.stop();
-            }
-          }, SILENCE_MS);
-        }
-        requestAnimationFrame(checkSilence);
-      };
-      requestAnimationFrame(checkSilence);
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = "ko-KR";
-        recognition.interimResults = true;
-        recognition.continuous = true;
-        recognition.onresult = (event) => {
-          const spokenText = Array.from(event.results)
-            .map((result) => result[0]?.transcript ?? "")
-            .join("")
-            .trim();
-          setLiveTranscript(spokenText);
-          liveTranscriptRef.current = spokenText;
-        };
-        recognition.onerror = () => {};
-        speechRecognitionRef.current = recognition;
-        try {
-          recognition.start();
-        } catch {
-          speechRecognitionRef.current = null;
-        }
-      }
-      noSpeechTimerRef.current = setTimeout(() => {
-        if (!speechDetectedRef.current && mediaRecorderRef.current?.state === "recording") {
-          mediaRecorderRef.current.stop();
-        }
-      }, NO_SPEECH_MS);
-      maxRecordingTimerRef.current = setTimeout(() => {
-        if (mediaRecorderRef.current?.state === "recording") {
-          mediaRecorderRef.current.stop();
-        }
-      }, MAX_RECORDING_MS);
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorder.onstop = async () => {
-        clearTimeout(silenceTimerRef.current);
-        silenceTimerRef.current = null;
-        clearTimeout(noSpeechTimerRef.current);
-        noSpeechTimerRef.current = null;
-        clearTimeout(maxRecordingTimerRef.current);
-        maxRecordingTimerRef.current = null;
-        speechRecognitionRef.current?.stop();
-        speechRecognitionRef.current = null;
-        audioContextRef.current?.close();
-        audioContextRef.current = null;
-        stream.getTracks().forEach((track) => track.stop());
-
-        setVoicePhase("idle");
-        onSpeak("목소리를 분석하고 있어요. 잠시만 기다려주세요.");
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-
-        const formData = new FormData();
-        formData.append("file", audioBlob, "recording.webm");
-
-        try {
-          const res = await fetch(`${API_BASE_URL}/api/ai/stt`, {
-            method: "POST",
-            body: formData,
-          });
-          const data = await res.json();
-          if (data.ok && data.text) {
-            const spokenText = data.text.trim();
-            setLiveTranscript("");
-            liveTranscriptRef.current = "";
-            setTimeout(() => onSelect(spokenText), 650);
-          } else {
-            const browserText = liveTranscriptRef.current.trim();
-            if (browserText) {
-              setLiveTranscript("");
-              liveTranscriptRef.current = "";
-              setTimeout(() => onSelect(browserText), 650);
-            } else {
-              onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
-            }
-          }
-        } catch (e) {
-          const browserText = liveTranscriptRef.current.trim();
-          if (browserText) {
-            setLiveTranscript("");
-            liveTranscriptRef.current = "";
-            setTimeout(() => onSelect(browserText), 650);
-          } else {
-            onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
-          }
-        }
-      };
-
-      mediaRecorder.start();
-      setVoicePhase("listening");
-      setLiveTranscript("");
-    } catch (e) {
-      onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
+    // 실시간 자막이 이미 있으면 "분석 중" 안내는 생략한다(곧 화면이 넘어가 안내가 겹침)
+    if (!browserText) {
+      onSpeak("목소리를 분석하고 있어요. 잠시만 기다려주세요.");
     }
-  }, [voicePhase, onSpeak, onSelect]);
+
+    const formData = new FormData();
+    formData.append("file", blob, "recording.webm");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/ai/stt`, { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.ok && data.text) {
+        setTimeout(() => onSelect(data.text.trim()), 650);
+        return;
+      }
+      if (browserText) {
+        setTimeout(() => onSelect(browserText), 650);
+      } else {
+        onSpeak("음성 분석에 실패했어요. 다시 시도해 주세요.");
+      }
+    } catch {
+      if (browserText) {
+        setTimeout(() => onSelect(browserText), 650);
+      } else {
+        onSpeak("서버 오류가 발생했어요. 다시 시도해 주세요.");
+      }
+    }
+  }, [onSelect, onSpeak]);
+
+  const handleVoiceError = useCallback(() => {
+    onSpeak("마이크 접근 권한이 없거나 지원하지 않는 기기입니다.");
+  }, [onSpeak]);
+
+  const { isRecording, interimText, start: toggleVoice } = useVoiceRecorder({
+    onResult: handleVoiceResult,
+    onError: handleVoiceError,
+    onStart: onStopSpeak,
+    silenceMs: 1200,
+    noSpeechMs: 4500,
+    maxMs: 10000,
+    liveTranscript: true,
+  });
 
   // ── 기본 입력 화면 ──
   return (
@@ -317,20 +214,20 @@ function SymptomSelectPanel({ selectedSymptom, onSelect, onSpeak }) {
       {/* 큰 말하기 버튼 */}
       <button
         className={`mb-7 flex min-h-[150px] w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 px-8 text-3xl font-black transition active:scale-[0.99] sm:text-4xl lg:mb-5 lg:min-h-[128px] lg:gap-3 lg:text-3xl xl:min-h-[146px] xl:text-4xl ${
-          voicePhase === "listening"
+          isRecording
             ? "border-boyak-blue bg-[#EDF4FF] text-boyak-blue"
             : "border-[#30343B] bg-white"
         }`}
         type="button"
         onClick={toggleVoice}
-        disabled={voicePhase === "listening"}
+        disabled={isRecording}
       >
         <Mic
-          className={`size-14 lg:size-10 ${voicePhase === "listening" ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
+          className={`size-14 lg:size-10 ${isRecording ? "animate-pulse text-boyak-blue" : "text-boyak-muted"}`}
           strokeWidth={2.4}
           aria-hidden="true"
         />
-        {voicePhase === "listening" ? (liveTranscript || "듣는 중...") : "말하기"}
+        {isRecording ? (interimText || "듣는 중...") : "말하기"}
       </button>
 
       {/* 구분선 */}
@@ -378,152 +275,59 @@ function HospitalResultsPanel({
   onRetryLocation,
   onSearchLocation,
   onSpeak,
+  onStopSpeak,
 }) {
-  const [isLocationListening, setIsLocationListening] = useState(false);
   const [isLocationTranscribing, setIsLocationTranscribing] = useState(false);
-  const locationRecorderRef = useRef(null);
-  const locationChunksRef = useRef([]);
-  const locationTimerRef = useRef(null);
-  const locationSilenceTimerRef = useRef(null);
-  const locationAudioContextRef = useRef(null);
-  const locationAnimationFrameRef = useRef(null);
-  const locationSpeechDetectedRef = useRef(false);
-  const locationVoiceSessionRef = useRef(0);
 
-  const stopLocationVoiceInput = useCallback((ignoreResult = false) => {
-    if (ignoreResult) locationVoiceSessionRef.current += 1;
-    if (locationTimerRef.current) {
-      clearTimeout(locationTimerRef.current);
-      locationTimerRef.current = null;
+  const handleLocationResult = useCallback(async (blob) => {
+    setIsLocationTranscribing(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", blob, "location.webm");
+      const response = await fetch(`${API_BASE_URL}/api/ai/stt`, { method: "POST", body: formData });
+      const data = await response.json();
+      const spokenQuery = data.text?.trim();
+      if (!response.ok || !data.ok || !spokenQuery) {
+        throw new Error("음성으로 주소를 듣지 못했어요. 다시 말해주세요.");
+      }
+      onLocationQueryChange?.(spokenQuery);
+      onSearchLocation?.(spokenQuery);
+    } catch (error) {
+      onSpeak?.(error.message || "음성으로 주소를 듣지 못했어요. 다시 말해주세요.");
+    } finally {
+      setIsLocationTranscribing(false);
     }
-    if (locationSilenceTimerRef.current) {
-      clearTimeout(locationSilenceTimerRef.current);
-      locationSilenceTimerRef.current = null;
-    }
-    if (locationAnimationFrameRef.current) {
-      cancelAnimationFrame(locationAnimationFrameRef.current);
-      locationAnimationFrameRef.current = null;
-    }
-    if (locationRecorderRef.current?.state === "recording") {
-      locationRecorderRef.current.stop();
-      return;
-    }
-    locationAudioContextRef.current?.close();
-    locationAudioContextRef.current = null;
-  }, []);
+  }, [onLocationQueryChange, onSearchLocation, onSpeak]);
+
+  const handleLocationError = useCallback(() => {
+    onSpeak?.("마이크 권한이 없어서 음성 입력을 사용할 수 없어요.");
+  }, [onSpeak]);
+
+  const {
+    isRecording: isLocationListening,
+    start: startLocationVoiceInput,
+    stop: stopLocationVoiceInput,
+  } = useVoiceRecorder({
+    onResult: handleLocationResult,
+    onError: handleLocationError,
+    onStart: onStopSpeak,
+    silenceMs: 1300,
+    maxMs: 10000,
+    liveTranscript: false,
+  });
 
   const searchTypedLocation = useCallback(() => {
     stopLocationVoiceInput(true);
     onSearchLocation?.();
   }, [onSearchLocation, stopLocationVoiceInput]);
 
-  const handleLocationVoiceInput = useCallback(async () => {
+  const handleLocationVoiceInput = useCallback(() => {
     if (isLocationListening) {
       stopLocationVoiceInput();
       return;
     }
-
-    try {
-      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-        throw new Error("unsupported");
-      }
-
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      const audioContext = new AudioContext();
-      const analyser = audioContext.createAnalyser();
-
-      analyser.fftSize = 512;
-      const audioBuffer = new Uint8Array(analyser.frequencyBinCount);
-      audioContext.createMediaStreamSource(stream).connect(analyser);
-      locationRecorderRef.current = recorder;
-      locationAudioContextRef.current = audioContext;
-      locationChunksRef.current = [];
-      locationSpeechDetectedRef.current = false;
-      const voiceSessionId = locationVoiceSessionRef.current + 1;
-      locationVoiceSessionRef.current = voiceSessionId;
-
-      const checkSpeechEnd = () => {
-        if (recorder.state !== "recording") return;
-
-        analyser.getByteFrequencyData(audioBuffer);
-        const averageVolume = audioBuffer.reduce((sum, value) => sum + value, 0) / audioBuffer.length;
-
-        if (averageVolume > 15) {
-          locationSpeechDetectedRef.current = true;
-          if (locationSilenceTimerRef.current) {
-            clearTimeout(locationSilenceTimerRef.current);
-            locationSilenceTimerRef.current = null;
-          }
-        } else if (locationSpeechDetectedRef.current && !locationSilenceTimerRef.current) {
-          locationSilenceTimerRef.current = setTimeout(stopLocationVoiceInput, 1300);
-        }
-
-        locationAnimationFrameRef.current = requestAnimationFrame(checkSpeechEnd);
-      };
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) locationChunksRef.current.push(event.data);
-      };
-
-      recorder.onstop = async () => {
-        if (locationTimerRef.current) {
-          clearTimeout(locationTimerRef.current);
-          locationTimerRef.current = null;
-        }
-        if (locationSilenceTimerRef.current) {
-          clearTimeout(locationSilenceTimerRef.current);
-          locationSilenceTimerRef.current = null;
-        }
-        if (locationAnimationFrameRef.current) {
-          cancelAnimationFrame(locationAnimationFrameRef.current);
-          locationAnimationFrameRef.current = null;
-        }
-        locationAudioContextRef.current?.close();
-        locationAudioContextRef.current = null;
-        stream.getTracks().forEach((track) => track.stop());
-        setIsLocationListening(false);
-        if (voiceSessionId !== locationVoiceSessionRef.current) {
-          locationRecorderRef.current = null;
-          return;
-        }
-        setIsLocationTranscribing(true);
-
-        try {
-          const audioBlob = new Blob(locationChunksRef.current, { type: "audio/webm" });
-          const formData = new FormData();
-          formData.append("file", audioBlob, "location.webm");
-
-          const response = await fetch(`${API_BASE_URL}/api/ai/stt`, {
-            method: "POST",
-            body: formData,
-          });
-          const data = await response.json();
-          const spokenQuery = data.text?.trim();
-
-          if (!response.ok || !data.ok || !spokenQuery) {
-            throw new Error("음성으로 주소를 듣지 못했어요. 다시 말해주세요.");
-          }
-
-          onLocationQueryChange?.(spokenQuery);
-          onSearchLocation?.(spokenQuery);
-        } catch (error) {
-          onSpeak?.(error.message || "음성으로 주소를 듣지 못했어요. 다시 말해주세요.");
-        } finally {
-          setIsLocationTranscribing(false);
-          locationRecorderRef.current = null;
-        }
-      };
-
-      recorder.start();
-      setIsLocationListening(true);
-      locationAnimationFrameRef.current = requestAnimationFrame(checkSpeechEnd);
-      locationTimerRef.current = setTimeout(stopLocationVoiceInput, 10000);
-    } catch {
-      setIsLocationListening(false);
-      onSpeak?.("마이크 권한이 없어서 음성 입력을 사용할 수 없어요.");
-    }
-  }, [isLocationListening, onLocationQueryChange, onSearchLocation, onSpeak, stopLocationVoiceInput]);
+    startLocationVoiceInput();
+  }, [isLocationListening, startLocationVoiceInput, stopLocationVoiceInput]);
 
   return (
     <div className="mx-auto flex w-full flex-1 flex-col rounded-[30px] border-2 border-boyak-line bg-white px-7 py-6 shadow-soft sm:px-9 sm:py-8 lg:min-h-0 lg:px-8 lg:py-5">

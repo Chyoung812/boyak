@@ -1056,6 +1056,7 @@ export default function Home() {
             onRetryLocation={handleRetryHospitalLocation}
             onSearchLocation={handleSearchHospitalAddress}
             onSpeak={speak}
+            onStopSpeak={stopSpeaking}
             onLocationChange={handleLocationChange}
             relocatedHospitals={relocatedHospitals}
             isRelocatingHospital={isRelocatingHospital}
