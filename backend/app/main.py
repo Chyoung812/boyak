@@ -491,6 +491,40 @@ async def hospital_nearby(request: Request, payload: HospitalNearbyRequest) -> d
     return {"hospitals": h_list}
 
 
+class PedestrianRouteRequest(BaseModel):
+    start_lat: float
+    start_lon: float
+    end_lat: float
+    end_lon: float
+    end_name: str = "도착"
+
+
+@app.post("/api/routes/pedestrian")
+@limiter.limit(RATE_TMAP)
+async def pedestrian_route(request: Request, payload: PedestrianRouteRequest) -> dict:
+    """TMap 무장애 보행자 경로 프록시. TMap 키를 서버에만 두고 features를 그대로 내려준다."""
+    tmap_key = settings.tmap_app_key
+    if not tmap_key:
+        return {"ok": False, "reason": "TMap 키가 설정되지 않았습니다.", "features": []}
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            res = await client.post(
+                "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json",
+                headers={"appKey": tmap_key, "Content-Type": "application/json"},
+                json={
+                    "startX": str(payload.start_lon), "startY": str(payload.start_lat),
+                    "endX": str(payload.end_lon), "endY": str(payload.end_lat),
+                    "reqCoordType": "WGS84GEO", "resCoordType": "WGS84GEO",
+                    "startName": "출발", "endName": payload.end_name,
+                    "searchOption": "30",  # 무장애 노선 (barrier-free)
+                },
+            )
+        return {"ok": True, "features": res.json().get("features", [])}
+    except Exception as exc:
+        logger.warning("[보행경로] TMap 실패: %s", exc)
+        return {"ok": False, "reason": str(exc), "features": []}
+
+
 class TTSRequest(BaseModel):
     text: str
     slow: bool = False
