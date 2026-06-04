@@ -3,19 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Navigation, RotateCcw, Square } from "lucide-react";
 
-const TMAP_KEY = process.env.NEXT_PUBLIC_TMAP_KEY;
-const fallbackLocation = { lat: 37.566481, lon: 126.985023 };
-const geolocationOptions = { timeout: 12000, enableHighAccuracy: false, maximumAge: 60000 };
-
-async function getGeolocationPermissionState() {
-  if (!navigator.permissions?.query) return "unknown";
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    return status.state;
-  } catch {
-    return "unknown";
-  }
-}
+import { API_BASE_URL } from "../constants";
+import { fallbackLocation, geolocationOptions, getGeolocationPermissionState } from "../lib/geolocation";
 
 function getLocationFailureLabel(error, permissionState) {
   if (permissionState === "denied" || error?.code === 1) {
@@ -152,27 +141,24 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
         .bindPopup(hospital.name)
         .addTo(map);
 
-      if (!TMAP_KEY) {
-        setInstruction("TMap 키가 없어 경로 표시를 건너뜁니다.");
-        return;
-      }
-
-      // TMap 무장애 보행자 경로 (searchOption 30)
-      fetch("https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json", {
+      // TMap 무장애 보행자 경로 (백엔드 프록시 — TMap 키는 서버에만 둔다)
+      fetch(`${API_BASE_URL}/api/routes/pedestrian`, {
         method: "POST",
-        headers: { appKey: TMAP_KEY, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          startX: String(lon), startY: String(lat),
-          endX: String(hospital.lon), endY: String(hospital.lat),
-          reqCoordType: "WGS84GEO", resCoordType: "WGS84GEO",
-          startName: "출발", endName: hospital.name,
-          searchOption: "30",
+          start_lat: lat, start_lon: lon,
+          end_lat: hospital.lat, end_lon: hospital.lon,
+          end_name: hospital.name,
         }),
       })
         .then((r) => r.json())
         .then((data) => {
-          if (cancelled || !data?.features) return;
-          const features = data.features;
+          if (cancelled) return;
+          const features = data?.features || [];
+          if (!features.length) {
+            setInstruction("경로를 계산하지 못했어요. 안내 시작을 누르면 GPS 추적만 이용합니다.");
+            return;
+          }
           const totalDistance = features[0]?.properties?.totalDistance ?? 0;
           const totalTimeSec = features[0]?.properties?.totalTime ?? 0;
           const totalTime = Math.max(1, Math.ceil(totalTimeSec / 60));
@@ -279,27 +265,24 @@ export default function NavigationMap({ hospital, onArrive, onSpeak, onLocationC
 
   // ── 주소 검색으로 출발지 변경 ──
   const handleAddressSearch = useCallback(async () => {
-    if (!addressInput.trim() || !TMAP_KEY) return;
+    if (!addressInput.trim()) return;
     setIsGeocoding(true);
     try {
-      const res = await fetch(
-        `https://apis.openapi.sk.com/tmap/pois?version=1&searchKeyword=${encodeURIComponent(addressInput)}&resCoordType=WGS84GEO&count=1`,
-        { headers: { appKey: TMAP_KEY } }
-      );
+      const res = await fetch(`${API_BASE_URL}/api/locations/geocode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: addressInput.trim() }),
+      });
       const data = await res.json();
-      const poi = data?.searchPoiInfo?.pois?.poi?.[0];
-      if (poi) {
-        const newLoc = {
-          lat: parseFloat(poi.frontLat || poi.noorLat),
-          lon: parseFloat(poi.frontLon || poi.noorLon),
-        };
-        setLocLabel(`출발지: ${poi.name || addressInput}`);
+      if (res.ok && data.ok) {
+        const newLoc = { lat: data.lat, lon: data.lon };
+        setLocLabel(`출발지: ${data.name || addressInput}`);
         setUserLoc(newLoc);   // 지도 effect 재실행됨
         setShowAddressInput(false);
         setAddressInput("");
         onLocationChange?.(newLoc);
       } else {
-        alert("주소를 찾을 수 없어요. 다시 입력해 주세요.");
+        alert(data.reason || "주소를 찾을 수 없어요. 다시 입력해 주세요.");
       }
     } catch {
       alert("주소 검색에 실패했어요.");

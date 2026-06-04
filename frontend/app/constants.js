@@ -50,19 +50,7 @@ export const medicineSteps = [
   "결과 확인",
 ];
 
-export const medicineStepKeys = [
-  "capture",
-  "add",
-  "herbal",
-  "result",
-];
-
 export const hospitalStepKeys = ["input", "results", "select", "route", "arrived"];
-
-export const extractedMedicines = [
-  { name: "아모잘탄정", detail: "혈압약 · 2026.05.10 조제" },
-  { name: "타이레놀정", detail: "해열진통제 · 2026.05.10 조제" },
-];
 
 export const homeMedicines = [
   { name: "감기약",     icon: "Thermometer", color: "#3B9EF8" },
@@ -119,15 +107,6 @@ export const nearbyHospitals = [
     recommendedForWalking: false,
     floor: "3층",
   },
-];
-
-export const costBodyOptions = ["어깨", "무릎", "허리"];
-
-export const treatmentOptions = [
-  "진찰만 받는 경우",
-  "진찰, 엑스레이, 처방전을 받는 경우",
-  "진찰, 엑스레이, 물리치료, 처방전을 받는 경우",
-  "기타 문의",
 ];
 
 export const treatmentCosts = {

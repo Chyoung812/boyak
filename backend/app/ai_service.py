@@ -1,3 +1,4 @@
+import json
 from typing import Any, Dict
 
 import httpx
@@ -37,7 +38,6 @@ async def route_user_text_with_ai(text: str) -> Dict[str, Any]:
                 },
             )
         body = resp.json()
-        import json
         content = body["choices"][0]["message"]["content"]
         return {"ok": True, "source": "openai", **json.loads(content)}
     except Exception as exc:

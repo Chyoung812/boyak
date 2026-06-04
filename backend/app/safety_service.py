@@ -154,36 +154,6 @@ def _with_public_summary(payload: Dict[str, Any], alerts: List[Dict[str, Any]]) 
     }
 
 
-def check_medicine_safety(
-    medicine_names: List[str],
-    age: Optional[int] = None,
-    has_herbal_medicine: bool = False,
-    has_supplement: bool = False,
-    dispensed_days_ago: Optional[int] = None,
-    dosage_form: Optional[str] = None,
-) -> Dict[str, Any]:
-    product_codes, ingredient_codes = _resolve_codes(medicine_names)
-    raw_alerts = safety_check_by_codes(product_codes, ingredient_codes)
-    raw_alerts = _filter_age(raw_alerts, age)
-    alerts = [_format_alert(a) for a in raw_alerts]
-
-    notes = []
-    if has_herbal_medicine:
-        notes.append("한약을 함께 드시면 양약과 서로 영향을 줄 수 있어요. 한의사 선생님께 꼭 말씀드리세요.")
-    if has_supplement:
-        notes.append("비타민이나 영양제를 함께 드실 때 같은 영양소를 너무 많이 드실 수 있어요.")
-    if dispensed_days_ago is not None and dispensed_days_ago > 30:
-        notes.append(f"이 약을 조제하신 지 {dispensed_days_ago}일이 지났어요. 드시기 전에 유효기간을 꼭 확인해 주세요.")
-
-    return _with_public_summary({
-        "ok": True,
-        "medicine_count": len(medicine_names),
-        "alert_count": len(alerts),
-        "alerts": alerts,
-        "notes": notes,
-    }, alerts)
-
-
 def check_medicine_bags_safety(
     medicine_bags: List[Dict[str, Any]],
     age: Optional[int] = None,

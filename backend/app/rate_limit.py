@@ -6,8 +6,8 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 # ── 한도 설정: 이 숫자만 바꾸면 됩니다 ──────────────────────────────────────
-OCR_DAILY_LIMIT       = 30   # OpenAI OCR     하루 전체 최대 호출 수
-AI_ROUTE_DAILY_LIMIT  = 50   # OpenAI AI라우팅 하루 전체 최대 호출 수
+OCR_DAILY_LIMIT       = 30   # OCR(네이버 클로바) 하루 전체 최대 호출 수
+AI_ROUTE_DAILY_LIMIT  = 50   # AI 라우팅       하루 전체 최대 호출 수
 TMAP_DAILY_LIMIT      = 50   # TMap 병원검색   하루 전체 최대 호출 수
 
 RATE_OCR       = "3/minute"  # IP당 OCR 속도 제한
@@ -47,8 +47,8 @@ class _DailyCounter:
             return max(0, self.limit - self._count)
 
 
-ocr_daily       = _DailyCounter(limit=OCR_DAILY_LIMIT,      name="OpenAI OCR")
-ai_route_daily  = _DailyCounter(limit=AI_ROUTE_DAILY_LIMIT, name="OpenAI AI라우팅")
+ocr_daily       = _DailyCounter(limit=OCR_DAILY_LIMIT,      name="OCR")
+ai_route_daily  = _DailyCounter(limit=AI_ROUTE_DAILY_LIMIT, name="AI 라우팅")
 tmap_daily      = _DailyCounter(limit=TMAP_DAILY_LIMIT,     name="TMap 병원검색")
 
 

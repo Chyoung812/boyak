@@ -23,9 +23,9 @@ def test_cost_chat_fee_basis_mentions_11990_and_first_visit_flow():
     )
 
     assert result["topic"] == "covered_fee_basis"
-    assert "11990" in result["answer"]
+    assert "11990" in result["sources"]
     assert "진찰" in result["answer"]
-    assert "X-ray" in result["answer"]
+    assert "엑스레이" in result["answer"]
 
 
 def test_cost_chat_insurance_does_not_make_net_price():

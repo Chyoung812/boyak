@@ -3,7 +3,6 @@ import io
 import logging
 import time
 from typing import Any, List, Optional
-from urllib.parse import quote
 
 import httpx
 from fastapi import FastAPI, File, Query, Request, UploadFile
@@ -28,7 +27,7 @@ from app.drug_info_service import get_drug_descriptions
 from app.ocr_service import extract_medicine_bags_from_images
 from app.public_data_client import PublicDataClient
 from app.public_data_sources import list_sources
-from app.safety_service import check_medicine_bags_safety, check_medicine_safety, check_selected_medicines_safety
+from app.safety_service import check_medicine_bags_safety, check_selected_medicines_safety
 from app.ai_service import transcribe_audio_with_ai
 
 settings = get_settings()
@@ -275,16 +274,6 @@ async def supplement_ingredients(
     )
 
 
-def kakao_map_search_url(keyword: str) -> str:
-    return f"https://map.kakao.com/link/search/{quote(keyword)}"
-
-
-def kakao_map_directions_url(name: str, lat: Optional[float] = None, lng: Optional[float] = None) -> str:
-    if lat is None or lng is None:
-        return kakao_map_search_url(name)
-    return f"https://map.kakao.com/link/to/{quote(name)},{lat},{lng}"
-
-
 _SYMPTOM_DEPT_MAP = [
     (["허리", "요통", "척추", "디스크", "허리디스크", "무릎", "무릎관절", "어깨", "어깨결림",
       "관절", "뼈", "골절", "골다공증", "발목", "고관절", "팔꿈치", "손목"], "정형외과"),
@@ -491,6 +480,40 @@ async def hospital_nearby(request: Request, payload: HospitalNearbyRequest) -> d
     return {"hospitals": h_list}
 
 
+class PedestrianRouteRequest(BaseModel):
+    start_lat: float
+    start_lon: float
+    end_lat: float
+    end_lon: float
+    end_name: str = "도착"
+
+
+@app.post("/api/routes/pedestrian")
+@limiter.limit(RATE_TMAP)
+async def pedestrian_route(request: Request, payload: PedestrianRouteRequest) -> dict:
+    """TMap 무장애 보행자 경로 프록시. TMap 키를 서버에만 두고 features를 그대로 내려준다."""
+    tmap_key = settings.tmap_app_key
+    if not tmap_key:
+        return {"ok": False, "reason": "TMap 키가 설정되지 않았습니다.", "features": []}
+    try:
+        async with httpx.AsyncClient(timeout=8) as client:
+            res = await client.post(
+                "https://apis.openapi.sk.com/tmap/routes/pedestrian?version=1&format=json",
+                headers={"appKey": tmap_key, "Content-Type": "application/json"},
+                json={
+                    "startX": str(payload.start_lon), "startY": str(payload.start_lat),
+                    "endX": str(payload.end_lon), "endY": str(payload.end_lat),
+                    "reqCoordType": "WGS84GEO", "resCoordType": "WGS84GEO",
+                    "startName": "출발", "endName": payload.end_name,
+                    "searchOption": "30",  # 무장애 노선 (barrier-free)
+                },
+            )
+        return {"ok": True, "features": res.json().get("features", [])}
+    except Exception as exc:
+        logger.warning("[보행경로] TMap 실패: %s", exc)
+        return {"ok": False, "reason": str(exc), "features": []}
+
+
 class TTSRequest(BaseModel):
     text: str
     slow: bool = False
@@ -501,30 +524,3 @@ async def tts(payload: TTSRequest) -> Response:
     buf = io.BytesIO()
     gTTS(text=payload.text[:1000], lang="ko", slow=payload.slow).write_to_fp(buf)
     return Response(content=buf.getvalue(), media_type="audio/mpeg")
-
-
-@app.get("/api/hospitals/recommend")
-def hospital_recommend(symptom: str = "무릎", region: str = "서울") -> dict:
-    # MVP: 길찾기는 카카오맵 링크로 넘긴다. REST Directions API/키 없이도 시연 가능.
-    department = "신경과 또는 가정의학과" if symptom == "두통" else "정형외과 또는 통증의학과"
-    search_keyword = f"{region} {department.split(' 또는 ')[0]}"
-    return {
-        "symptom": symptom,
-        "region": region,
-        "recommended_department": department,
-        "routing_provider": "kakao_map_link",
-        "kakao_api_apply_url": "https://developers.kakao.com/",
-        "note": "백엔드는 병원 후보와 카카오맵 링크만 내려주고, 실제 길찾기는 카카오맵 화면으로 이동한다.",
-        "links": {
-            "search": kakao_map_search_url(search_keyword),
-            "directions_format": "https://map.kakao.com/link/to/{병원이름},{위도},{경도}",
-        },
-        "items": [
-            {
-                "name": search_keyword,
-                "type": "kakao_search_placeholder",
-                "map_url": kakao_map_search_url(search_keyword),
-                "directions_url": kakao_map_directions_url(search_keyword),
-            }
-        ],
-    }
